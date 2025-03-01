@@ -1,0 +1,8 @@
+BVG100,Latte,5.0,Beverage
+BVG101,Cappuccino,4.5,Beverage
+BVG102,Espresso,3.0,Beverage
+FOOD200,Sandwich,7.0,Food
+FOOD201,Cake,4.0,Food
+FOOD202,Muffin,3.5,Food
+OTH300,Water Bottle,1.5,Other
+OTH301,Tea,2.5,Other
