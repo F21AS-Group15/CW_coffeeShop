@@ -1,3 +1,4 @@
+package com.itjava;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -41,7 +42,7 @@ class Product {
     public String getCategory() { return category; }
     public String getId() { return id; }
     public int getOrderCount() { return orderCount; }
-    public void incrementOrderCount(Integer value) { this.orderCount++; }
+    public void incrementOrderCount() { this.orderCount++; }
 
     public void setName(String name) { this.name = name; }
     public void setDescription(String description) { this.description = description; }
@@ -65,6 +66,7 @@ class Order {
     private String customerId;
     private List<Product> items;
     private boolean isCompleted;
+    private double totalPrice; // 新增的 totalPrice 字段
 
     public Order(String orderId, String timestamp, String customerId) {
         this.orderId = orderId;
@@ -72,16 +74,28 @@ class Order {
         this.customerId = customerId;
         this.items = new ArrayList<>();
         this.isCompleted = false;
+        this.totalPrice = 0; // 初始化为0
     }
 
     public void addItem(Product product) { items.add(product); }
     public void addItem(Product product, int amount) {
         for (int i = 0; i < amount; i++){
             items.add(product);
+            product.incrementOrderCount();
         }
     }
     public void deleteItem(Product product) { items.remove(product); }
-    public double getTotalPrice() { return items.stream().mapToDouble(Product::getPrice).sum(); }
+
+    // 获取订单总价
+    public double getTotalPrice() {
+        return totalPrice > 0 ? totalPrice : items.stream().mapToDouble(Product::getPrice).sum();
+    }
+
+    // 设置总价
+    public void setTotalPrice(double totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
     public String getOrderDetails() { return "Order ID: " + orderId + " Total: $" + getTotalPrice(); }
     public boolean isCompleted() { return isCompleted; }
     public void completeOrder() { this.isCompleted = true; }
@@ -141,25 +155,79 @@ class OrderManager {
     public boolean removeOrder(String orderId) { return orders.removeIf(o -> o.getOrderDetails().contains(orderId)); }
 }
 
-// Discount 类
-class Discount {
+//折扣抽象类
+abstract class Discount {
     private String discountName;
+    public Discount(String discountName) {
+        this.discountName = discountName;
+    }
+    public String getDiscountName() {
+        return discountName;
+    }
 
-    public Discount(String discountName) { this.discountName = discountName; }
-    public String getDiscountName() { return discountName; }
-    public void setDiscountName(String discountName) { this.discountName = discountName; }
-    public double applyDiscount(Order order) { return order.getTotalPrice(); }
+    // 抽象方法，子类实现具体折扣规则
+    public abstract double applyDiscount(Order order);
 }
 
-// DiscountManager 类
+//默认折扣
+class DefaultDiscount extends Discount {
+    public DefaultDiscount() {
+        super("default"); // 设置折扣名称为 "default"
+    }
+
+    @Override
+    public double applyDiscount(Order order) {
+        double total = order.getTotalPrice();
+
+        // 满50打8折
+        if (total >= 50) {
+            return total*0.8;
+        }
+        // 满30减5
+        else if (total >= 30) {
+            return total - 5;
+        }
+        // 满20减2
+        else if (total >= 20) {
+            return total - 2;
+        }
+
+        return total; // 不满足时，返回原价
+    }
+}
+
+
+//DiscountManager类
 class DiscountManager {
     private Map<String, Discount> discountRules;
 
-    public DiscountManager() { this.discountRules = new HashMap<>(); }
-    public void addDiscount(Discount discount) { discountRules.put(discount.getDiscountName(), discount); }
-    public boolean removeDiscount(Discount discount) { return discountRules.remove(discount.getDiscountName()) != null; }
-    public double applyDiscount(String discountName, Order order) { return discountRules.getOrDefault(discountName, new Discount("None")).applyDiscount(order); }
-    public void displayDiscount() { discountRules.keySet().forEach(System.out::println); }
+    public DiscountManager() {
+        this.discountRules = new HashMap<>();
+        // 默认添加 "default" 折扣规则
+        addDiscount(new DefaultDiscount());
+    }
+
+    // 添加折扣规则
+    public void addDiscount(Discount discount) {
+        discountRules.put(discount.getDiscountName(), discount);
+    }
+
+    // 删除折扣规则
+    public boolean removeDiscount(Discount discount) {
+        return discountRules.remove(discount.getDiscountName()) != null;
+    }
+
+    // 应用折扣规则，默认使用"default"折扣规则
+    public double applyDiscount(String discountName, Order order) {
+        // 如果折扣名称为空或null，使用默认折扣规则
+        if (discountName == null || discountName.isEmpty()) {
+            discountName = "default";
+        }
+
+        // 获取指定折扣规则并应用，如果没有该规则，则返回原价
+        Discount discount = discountRules.getOrDefault(discountName, new DefaultDiscount());
+        return discount.applyDiscount(order);
+    }
 }
 
 public class CoffeeShop {
@@ -178,8 +246,8 @@ public class CoffeeShop {
         orderManager = new OrderManager();
         discountManager = new DiscountManager();
         selectedProducts = new HashMap<>();
-        loadMenuFromFile("D:\\PPSTAR\\github\\untitled\\src\\menu.txt");
-        loadOrdersFromFile("D:\\PPSTAR\\github\\untitled\\src\\orders.txt");
+        loadMenuFromFile("E:\\idea_files\\web-ai-code\\coffee_shop\\src\\main\\java\\com\\itjava\\menu.txt");
+        loadOrdersFromFile("E:\\idea_files\\web-ai-code\\coffee_shop\\src\\main\\java\\com\\itjava\\orders.txt");
         setupGUI();
     }
 
@@ -378,13 +446,13 @@ public class CoffeeShop {
 
         frame.setVisible(true);
     }
+
     private void placeOrder() {
-        // 创建订单
         Order order = new Order(UUID.randomUUID().toString(), new Date().toString(), "customer1");
         for (Map.Entry<Product, Integer> entry : selectedProducts.entrySet()) {
             if (entry.getValue() > 0) {
                 order.addItem(entry.getKey(), entry.getValue());
-                entry.getKey().incrementOrderCount(entry.getValue());
+//                entry.getKey().incrementOrderCount(entry.getValue()); // 增加商品的点单次数
             }
         }
 
@@ -393,21 +461,32 @@ public class CoffeeShop {
             return;
         }
 
-        // 应用折扣
+        // 计算原始总价
         double totalPrice = order.getTotalPrice();
-        totalPrice = discountManager.applyDiscount("default", order);
+        // 应用折扣
+        totalPrice = discountManager.applyDiscount(null, order);
+
+        // 更新订单的总价
+        order.setTotalPrice(totalPrice);
+
+        // 完成订单
+        order.completeOrder();
         orderManager.addOrder(order);
 
         // 显示购买成功弹窗
         JOptionPane.showMessageDialog(frame, "Order Placed Successfully!\n" + order.getOrderDetails());
 
-        // 清空已选商品并重置数量显示
+        // 清空已选商品
         selectedProducts.clear();
-        for (JLabel label : quantityLabels) {
-            label.setText("0");
+        for (Component comp : productPanel.getComponents()) {
+            if (comp instanceof JPanel) {
+                for (Component subComp : ((JPanel) comp).getComponents()) {
+                    if (subComp instanceof JLabel && ((JLabel) subComp).getText().matches("\\d+")) {
+                        ((JLabel) subComp).setText("0");
+                    }
+                }
+            }
         }
-        productPanel.revalidate(); // 刷新布局
-        productPanel.repaint();    // 重绘界面
     }
 
     public static void main(String[] args) {
