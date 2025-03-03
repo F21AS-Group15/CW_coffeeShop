@@ -1,8 +1,8 @@
-BVG100,Latte,description,Beverage,5.0
-BVG101,Cappuccino,description,Beverage,4.5
-BVG102,Espresso,description,Beverage,3.0
-FOOD200,Sandwich,description,Food,7.0
-FOOD201,Cake,description,Food,4.0
-FOOD202,Muffin,description,Food,3.5
-OTH300,Water Bottle,description,Other,1.5
-OTH301,Tea,description,Other,2.5
+BVG100,Latte,Steamed milk with a shot of espresso, Beverage,5.0
+BVG101,Cappuccino,Espresso with steamed milk and a thick layer of foam, Beverage,4.5
+BVG102,Espresso,Strong and concentrated coffee served in a small cup, Beverage,3.0
+FOOD200,Sandwich,Freshly made sandwich with a choice of fillings, Food,7.0
+FOOD201,Cake,Soft and sweet cake available in different flavors, Food,4.0
+FOOD202,Muffin,Moist and fluffy muffin perfect for a snack, Food,3.5
+OTH300,Water Bottle,Refreshing bottled water for hydration, Other,1.5
+OTH301,Tea,Hot brewed tea with a soothing aroma, Other,2.5
