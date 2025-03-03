@@ -2,18 +2,27 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
 
-// Product Àà
+// è‡ªå®šä¹‰å¼‚å¸¸ï¼šåº“å­˜ä¸è¶³å¼‚å¸¸
+class OutOfStockException extends Exception {
+    public OutOfStockException(String message) {
+        super(message);
+    }
+}
+
+// Product ç±»
 class Product {
     private String id;
     private String name;
     private String description;
     private String category;
     private double price;
-    private int orderCount; // ¼ÇÂ¼ÉÌÆ·±»µãµ¥µÄ´ÎÊı
+    private int orderCount; // è®°å½•å•†å“è¢«ç‚¹å•çš„æ¬¡æ•°
 
     public Product(String id, String name, String description, String category, double price) {
         this.id = id;
@@ -38,52 +47,49 @@ class Product {
     public void setDescription(String description) { this.description = description; }
     public void setCategory(String category) { this.category = category; }
     public void setPrice(double price) { this.price = price; }
+
+    // æ·»åŠ  getName å’Œ getDescription æ–¹æ³•
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 }
 
-// Order Àà
+// Order ç±»
 class Order {
-	private String orderId;
-	private String timeStamp;
-	private String customerId;
-	private List<Product> items;
-	private boolean isCompleted;
-	private double totalPrice; // ĞÂÔöµÄ totalPrice ×Ö¶Î
+    private String orderId;
+    private String timeStamp;
+    private String customerId;
+    private List<Product> items;
+    private boolean isCompleted;
 
-	public Order(String orderId, String timestamp, String customerId) {
-		this.orderId = orderId;
-	    this.timeStamp = timestamp;
-	    this.customerId = customerId;
-	    this.items = new ArrayList<>();
-	    this.isCompleted = false;
-	    this.totalPrice = 0; // ³õÊ¼»¯Îª0
-	}
-	
-	 public void addItem(Product product) { items.add(product); }
-	 public void addItem(Product product, int amount) {
-		 for (int i = 0; i < amount; i++){
-	         items.add(product);
-	     }
-	 }
-	 public void deleteItem(Product product) { items.remove(product); }
-	 
-	 // »ñÈ¡¶©µ¥×Ü¼Û
-	 public double getTotalPrice() { 
-	     return totalPrice > 0 ? totalPrice : items.stream().mapToDouble(Product::getPrice).sum();
-	 }
-	
-	 // ÉèÖÃ×Ü¼Û
-	 public void setTotalPrice(double totalPrice) { 
-	     this.totalPrice = totalPrice; 
-	 }
-	
-	 public String getOrderDetails() { return "Order ID: " + orderId + " Total: $" + getTotalPrice(); }
-	 public boolean isCompleted() { return isCompleted; }
-	 public void completeOrder() { this.isCompleted = true; }
-	 public void resetOrder() { this.isCompleted = false; }
-	 public List<Product> getItems() { return items; }
+    public Order(String orderId, String timestamp, String customerId) {
+        this.orderId = orderId;
+        this.timeStamp = timestamp;
+        this.customerId = customerId;
+        this.items = new ArrayList<>();
+        this.isCompleted = false;
+    }
+
+    public void addItem(Product product) { items.add(product); }
+    public void addItem(Product product, int amount) {
+        for (int i = 0; i < amount; i++){
+            items.add(product);
+        }
+    }
+    public void deleteItem(Product product) { items.remove(product); }
+    public double getTotalPrice() { return items.stream().mapToDouble(Product::getPrice).sum(); }
+    public String getOrderDetails() { return "Order ID: " + orderId + " Total: $" + getTotalPrice(); }
+    public boolean isCompleted() { return isCompleted; }
+    public void completeOrder() { this.isCompleted = true; }
+    public void resetOrder() { this.isCompleted = false; }
+    public List<Product> getItems() { return items; }
 }
 
-// Customer Àà
+// Customer ç±»
 class Customer {
     private String customerId;
     private String name;
@@ -99,13 +105,13 @@ class Customer {
     public List<Order> getOrderHistory() { return orders; }
 }
 
-// Menu Àà
+// Menu ç±»
 class Menu {
     private List<Product> products;
 
     public Menu() { this.products = new ArrayList<>(); }
     public List<Product> getAllProducts() {
-        return new ArrayList<>(products); // ·µ»Ø²úÆ·µÄ¸±±¾
+        return new ArrayList<>(products); // è¿”å›äº§å“çš„å‰¯æœ¬
     }
     public void loadFromFile(String filePath) {}
     public void displayMenu() { products.forEach(p -> System.out.println(p.getDetails())); }
@@ -114,7 +120,7 @@ class Menu {
     public boolean removeProduct(String productId) { return products.removeIf(p -> p.getId().equals(productId)); }
 }
 
-// OrderManager Àà
+// OrderManager ç±»
 class OrderManager {
     private List<Order> orders;
 
@@ -135,82 +141,29 @@ class OrderManager {
     public boolean removeOrder(String orderId) { return orders.removeIf(o -> o.getOrderDetails().contains(orderId)); }
 }
 
+// Discount ç±»
+class Discount {
+    private String discountName;
 
-//ÕÛ¿Û³éÏóÀà
-abstract class Discount {
-	private String discountName;
-	public Discount(String discountName) {
-		this.discountName = discountName;
-	}
-	public String getDiscountName() {
-		return discountName;
-	}
-	
-	// ³éÏó·½·¨£¬×ÓÀàÊµÏÖ¾ßÌåÕÛ¿Û¹æÔò
-    public abstract double applyDiscount(Order order);
+    public Discount(String discountName) { this.discountName = discountName; }
+    public String getDiscountName() { return discountName; }
+    public void setDiscountName(String discountName) { this.discountName = discountName; }
+    public double applyDiscount(Order order) { return order.getTotalPrice(); }
 }
 
-//Ä¬ÈÏÕÛ¿Û
-class DefaultDiscount extends Discount {
-    public DefaultDiscount() {
-        super("default"); // ÉèÖÃÕÛ¿ÛÃû³ÆÎª "default"
-    }
-
-    @Override
-    public double applyDiscount(Order order) {
-        double total = order.getTotalPrice();
-        
-        // Âú50´ò8ÕÛ
-        if (total >= 50) {
-            return total*0.8;
-        }
-        // Âú30¼õ5
-        else if (total >= 30) {
-            return total - 5;
-        }
-        // Âú20¼õ2
-        else if (total >= 20) {
-            return total - 2;
-        }
-        
-        return total; // ²»Âú×ãÊ±£¬·µ»ØÔ­¼Û
-    }
-}
-
-//DiscountManagerÀà
+// DiscountManager ç±»
 class DiscountManager {
     private Map<String, Discount> discountRules;
 
-    public DiscountManager() {
-        this.discountRules = new HashMap<>();
-        // Ä¬ÈÏÌí¼Ó "default" ÕÛ¿Û¹æÔò
-        addDiscount(new DefaultDiscount());
-    }
-
-    // Ìí¼ÓÕÛ¿Û¹æÔò
-    public void addDiscount(Discount discount) {
-        discountRules.put(discount.getDiscountName(), discount);
-    }
-
-    // É¾³ıÕÛ¿Û¹æÔò
-    public boolean removeDiscount(Discount discount) {
-        return discountRules.remove(discount.getDiscountName()) != null;
-    }
-
-    // Ó¦ÓÃÕÛ¿Û¹æÔò£¬Ä¬ÈÏÊ¹ÓÃ"default"ÕÛ¿Û¹æÔò
-    public double applyDiscount(String discountName, Order order) {
-        // Èç¹ûÕÛ¿ÛÃû³ÆÎª¿Õ»ònull£¬Ê¹ÓÃÄ¬ÈÏÕÛ¿Û¹æÔò
-        if (discountName == null || discountName.isEmpty()) {
-            discountName = "default";
-        }
-
-        // »ñÈ¡Ö¸¶¨ÕÛ¿Û¹æÔò²¢Ó¦ÓÃ£¬Èç¹ûÃ»ÓĞ¸Ã¹æÔò£¬Ôò·µ»ØÔ­¼Û
-        Discount discount = discountRules.getOrDefault(discountName, new DefaultDiscount());
-        return discount.applyDiscount(order);
-    }
+    public DiscountManager() { this.discountRules = new HashMap<>(); }
+    public void addDiscount(Discount discount) { discountRules.put(discount.getDiscountName(), discount); }
+    public boolean removeDiscount(Discount discount) { return discountRules.remove(discount.getDiscountName()) != null; }
+    public double applyDiscount(String discountName, Order order) { return discountRules.getOrDefault(discountName, new Discount("None")).applyDiscount(order); }
+    public void displayDiscount() { discountRules.keySet().forEach(System.out::println); }
 }
 
 public class CoffeeShop {
+    private List<JLabel> quantityLabels = new ArrayList<>();
     private Menu menu;
     private OrderManager orderManager;
     private DiscountManager discountManager;
@@ -218,15 +171,15 @@ public class CoffeeShop {
     private JPanel productPanel;
     private JTextArea orderDetails;
     private JButton placeOrderButton;
-    private Map<Product, Integer> selectedProducts; // ÉÌÆ·ºÍ¶ÔÓ¦µÄ¹ºÂòÊıÁ¿
+    private Map<Product, Integer> selectedProducts; // å•†å“å’Œå¯¹åº”çš„è´­ä¹°æ•°é‡
 
     public CoffeeShop() {
         menu = new Menu();
         orderManager = new OrderManager();
         discountManager = new DiscountManager();
         selectedProducts = new HashMap<>();
-        loadMenuFromFile("src/menu.txt");
-        loadOrdersFromFile("src/orders.txt");
+        loadMenuFromFile("D:\\PPSTAR\\github\\untitled\\src\\menu.txt");
+        loadOrdersFromFile("D:\\PPSTAR\\github\\untitled\\src\\orders.txt");
         setupGUI();
     }
 
@@ -249,26 +202,26 @@ public class CoffeeShop {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
-                if (parts.length > 3) {  // È·±£ÖÁÉÙÓĞ orderId, timestamp ºÍ customerId
+                if (parts.length > 3) {  // ç¡®ä¿è‡³å°‘æœ‰ orderId, timestamp å’Œ customerId
                     String orderId = parts[0];
                     String timestamp = parts[1];
                     String customerId = parts[2];
 
-                    // ´´½¨Ò»¸öĞÂµÄ Order ¶ÔÏó
+                    // åˆ›å»ºä¸€ä¸ªæ–°çš„ Order å¯¹è±¡
                     Order order = new Order(orderId, timestamp, customerId);
 
-                    // ½«ËùÓĞ²úÆ·Ìí¼Óµ½¶©µ¥ÖĞ
+                    // å°†æ‰€æœ‰äº§å“æ·»åŠ åˆ°è®¢å•ä¸­
                     for (int i = 3; i < parts.length; i++) {
                         String productId = parts[i];
 
-                        // ¸ù¾İ²úÆ·ID»ñÈ¡¶ÔÓ¦µÄ²úÆ·£¨¼ÙÉèÄãÓĞÒ»¸ö menu ¶ÔÏó£©
+                        // æ ¹æ®äº§å“IDè·å–å¯¹åº”çš„äº§å“ï¼ˆå‡è®¾ä½ æœ‰ä¸€ä¸ª menu å¯¹è±¡ï¼‰
                         Product product = menu.getProductById(productId);
                         if (product != null) {
-                            order.addItem(product, 1);  // ½«²úÆ·Ìí¼Óµ½¶©µ¥
+                            order.addItem(product, 1);  // å°†äº§å“æ·»åŠ åˆ°è®¢å•
                         }
                     }
 
-                    // ¼ÙÉèÄãÓĞÒ»¸ö orders ÁĞ±íÀ´´æ´¢ËùÓĞµÄ¶©µ¥
+                    // å‡è®¾ä½ æœ‰ä¸€ä¸ª orders åˆ—è¡¨æ¥å­˜å‚¨æ‰€æœ‰çš„è®¢å•
                     orderManager.addOrder(order);
                 }
             }
@@ -280,70 +233,158 @@ public class CoffeeShop {
     private void setupGUI() {
         frame = new JFrame("Order Management System");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 400);
+        frame.setSize(800, 600); // ç¼©å°çª—å£å°ºå¯¸
         frame.setLayout(new BorderLayout());
 
-        // ÉÌÆ·Ãæ°å
+        // æ¸å˜èƒŒæ™¯
+        JPanel backgroundPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g); // ç¡®ä¿è°ƒç”¨çˆ¶ç±»ç»˜åˆ¶æ–¹æ³•
+                Graphics2D g2d = (Graphics2D) g;
+                Color color1 = new Color(255, 223, 186); // æµ…æ©™è‰²
+                Color color2 = new Color(255, 182, 193); // æµ…ç²‰è‰²
+                GradientPaint gp = new GradientPaint(0, 0, color1, getWidth(), getHeight(), color2);
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        backgroundPanel.setLayout(new BorderLayout());
+        frame.setContentPane(backgroundPanel);
+
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setOpaque(false); // æ ‡ç­¾é€æ˜
+
+        // å•†å“é¢æ¿
         productPanel = new JPanel();
-        productPanel.setLayout(new BoxLayout(productPanel, BoxLayout.Y_AXIS));
+        productPanel.setLayout(new GridLayout(0, 2, 10, 10)); // æ”¹ä¸º 2 åˆ—ç½‘æ ¼å¸ƒå±€
+        productPanel.setOpaque(false); // ä½¿é¢æ¿é€æ˜
+
         for (Product product : menu.getAllProducts()) {
-            JPanel itemPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            JLabel nameLabel = new JLabel(product.getDetails());
+            // åˆ›å»ºå¡ç‰‡é¢æ¿
+            JPanel cardPanel = new JPanel(new BorderLayout()) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g); // ç¡®ä¿è°ƒç”¨çˆ¶ç±»ç»˜åˆ¶æ–¹æ³•
+                    Graphics2D g2d = (Graphics2D) g;
+                    g2d.setColor(new Color(255, 255, 255, 200)); // åŠé€æ˜ç™½è‰²èƒŒæ™¯
+                    g2d.fillRect(0, 0, getWidth(), getHeight()); // å¡«å……èƒŒæ™¯
+                }
+            };
+            cardPanel.setOpaque(false); // ç¡®ä¿é¢æ¿é€æ˜
+            cardPanel.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 0, 50), 2)); // è¾¹æ¡†
+            cardPanel.setPreferredSize(new Dimension(350, 150)); // è°ƒæ•´å¡ç‰‡å°ºå¯¸
+
+            // å•†å“ä¿¡æ¯é¢æ¿
+            JPanel infoPanel = new JPanel();
+            infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+            infoPanel.setOpaque(false); // ä½¿é¢æ¿é€æ˜
+
+            // å•†å“åç§°
+            JLabel nameLabel = new JLabel("<html><b>" + product.getName() + "</b></html>");
+            nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+            infoPanel.add(nameLabel);
+
+            // å•†å“æè¿°
+            JTextArea descriptionArea = new JTextArea(product.getDescription());
+            descriptionArea.setFont(new Font("Arial", Font.PLAIN, 12));
+            descriptionArea.setLineWrap(true);
+            descriptionArea.setWrapStyleWord(true);
+            descriptionArea.setEditable(false);
+            descriptionArea.setOpaque(false); // é€æ˜èƒŒæ™¯
+            infoPanel.add(descriptionArea);
+
+            // å•†å“ä»·æ ¼
+            JLabel priceLabel = new JLabel("Price: $" + product.getPrice());
+            priceLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+            infoPanel.add(priceLabel);
+
+            // æ•°é‡é€‰æ‹©é¢æ¿
+            JPanel quantityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            quantityPanel.setOpaque(false); // ä½¿é¢æ¿é€æ˜
+
             JButton minusButton = new JButton("-");
             JLabel quantityLabel = new JLabel("0");
+            quantityLabels.add(quantityLabel); // å°†æ ‡ç­¾æ·»åŠ åˆ°åˆ—è¡¨
             JButton plusButton = new JButton("+");
 
-            minusButton.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    int quantity = selectedProducts.getOrDefault(product, 0);
-                    if (quantity > 0) {
-                        quantity--;
-                        selectedProducts.put(product, quantity);
-                        quantityLabel.setText(String.valueOf(quantity));
-                    }
-                }
-            });
+            // è‡ªå®šä¹‰æŒ‰é’®æ ·å¼
+            minusButton.setBackground(new Color(255, 183, 197)); // æ¨±èŠ±ç²‰
+            minusButton.setForeground(Color.WHITE);
+            minusButton.setFocusPainted(false);
+            plusButton.setBackground(new Color(152, 251, 152)); // æŠ¹èŒ¶ç»¿
+            plusButton.setForeground(Color.WHITE);
+            plusButton.setFocusPainted(false);
 
-            plusButton.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    int quantity = selectedProducts.getOrDefault(product, 0);
-                    quantity++;
+            // æŒ‰é’®ç‚¹å‡»äº‹ä»¶
+            minusButton.addActionListener(e -> {
+                int quantity = selectedProducts.getOrDefault(product, 0);
+                if (quantity > 0) {
+                    quantity--;
                     selectedProducts.put(product, quantity);
                     quantityLabel.setText(String.valueOf(quantity));
                 }
             });
 
-            itemPanel.add(nameLabel);
-            itemPanel.add(minusButton);
-            itemPanel.add(quantityLabel);
-            itemPanel.add(plusButton);
-            productPanel.add(itemPanel);
+            plusButton.addActionListener(e -> {
+                int quantity = selectedProducts.getOrDefault(product, 0);
+                quantity++;
+                selectedProducts.put(product, quantity);
+                quantityLabel.setText(String.valueOf(quantity));
+            });
+
+            quantityPanel.add(minusButton);
+            quantityPanel.add(quantityLabel);
+            quantityPanel.add(plusButton);
+            infoPanel.add(quantityPanel);
+
+            cardPanel.add(infoPanel, BorderLayout.CENTER);
+            productPanel.add(cardPanel);
         }
 
         JScrollPane productScroll = new JScrollPane(productPanel);
-        frame.add(productScroll, BorderLayout.CENTER);
+        productScroll.setOpaque(false); // ä½¿æ»šåŠ¨é¢æ¿é€æ˜
+        productScroll.getViewport().setOpaque(false); // ä½¿è§†å£é€æ˜
+        productScroll.setPreferredSize(new Dimension(700, 450)); // è°ƒæ•´æ»šåŠ¨é¢æ¿å°ºå¯¸
+        tabbedPane.addTab("Products", productScroll);
 
-        // ÏÂµ¥°´Å¥
+        // è®¢å•é¢æ¿
+        JPanel orderPanel = new JPanel();
+        orderPanel.setOpaque(false); // ä½¿é¢æ¿é€æ˜
+        orderPanel.setPreferredSize(new Dimension(700, 450)); // è°ƒæ•´è®¢å•é¢æ¿å°ºå¯¸
+        tabbedPane.addTab("Orders", orderPanel);
+
+        // æŠ˜æ‰£é¢æ¿
+        JPanel discountPanel = new JPanel();
+        discountPanel.setOpaque(false); // ä½¿é¢æ¿é€æ˜
+        discountPanel.setPreferredSize(new Dimension(700, 450)); // è°ƒæ•´æŠ˜æ‰£é¢æ¿å°ºå¯¸
+        tabbedPane.addTab("Discounts", discountPanel);
+
+        backgroundPanel.add(tabbedPane, BorderLayout.CENTER);
+
+        // ä¸‹å•æŒ‰é’®
         placeOrderButton = new JButton("Place Order");
+        placeOrderButton.setBackground(new Color(70, 130, 180)); // æ˜Ÿç©ºè“
+        placeOrderButton.setForeground(Color.WHITE);
+        placeOrderButton.setFont(new Font("Arial", Font.BOLD, 14)); // ç¼©å°å­—ä½“
+        placeOrderButton.setFocusPainted(false);
         placeOrderButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 placeOrder();
             }
         });
-        frame.add(placeOrderButton, BorderLayout.SOUTH);
+        backgroundPanel.add(placeOrderButton, BorderLayout.SOUTH);
 
         frame.setVisible(true);
     }
-
     private void placeOrder() {
+        // åˆ›å»ºè®¢å•
         Order order = new Order(UUID.randomUUID().toString(), new Date().toString(), "customer1");
         for (Map.Entry<Product, Integer> entry : selectedProducts.entrySet()) {
             if (entry.getValue() > 0) {
                 order.addItem(entry.getKey(), entry.getValue());
-                entry.getKey().incrementOrderCount(entry.getValue()); // Ôö¼ÓÉÌÆ·µÄµãµ¥´ÎÊı
+                entry.getKey().incrementOrderCount(entry.getValue());
             }
         }
 
@@ -352,35 +393,22 @@ public class CoffeeShop {
             return;
         }
 
-        // ¼ÆËãÔ­Ê¼×Ü¼Û
+        // åº”ç”¨æŠ˜æ‰£
         double totalPrice = order.getTotalPrice();
-        // Ó¦ÓÃÕÛ¿Û
-        totalPrice = discountManager.applyDiscount(null, order);
-
-        // ¸üĞÂ¶©µ¥µÄ×Ü¼Û
-        order.setTotalPrice(totalPrice);
-
-        // Íê³É¶©µ¥
-        order.completeOrder();
+        totalPrice = discountManager.applyDiscount("default", order);
         orderManager.addOrder(order);
 
-        // ÏÔÊ¾¹ºÂò³É¹¦µ¯´°
+        // æ˜¾ç¤ºè´­ä¹°æˆåŠŸå¼¹çª—
         JOptionPane.showMessageDialog(frame, "Order Placed Successfully!\n" + order.getOrderDetails());
 
-        // Çå¿ÕÒÑÑ¡ÉÌÆ·
+        // æ¸…ç©ºå·²é€‰å•†å“å¹¶é‡ç½®æ•°é‡æ˜¾ç¤º
         selectedProducts.clear();
-        for (Component comp : productPanel.getComponents()) {
-            if (comp instanceof JPanel) {
-                for (Component subComp : ((JPanel) comp).getComponents()) {
-                    if (subComp instanceof JLabel && ((JLabel) subComp).getText().matches("\\d+")) {
-                        ((JLabel) subComp).setText("0");
-                    }
-                }
-            }
+        for (JLabel label : quantityLabels) {
+            label.setText("0");
         }
+        productPanel.revalidate(); // åˆ·æ–°å¸ƒå±€
+        productPanel.repaint();    // é‡ç»˜ç•Œé¢
     }
-
-
 
     public static void main(String[] args) {
         CoffeeShop coffeeShop = new CoffeeShop();
