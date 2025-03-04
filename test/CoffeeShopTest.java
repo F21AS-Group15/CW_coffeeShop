@@ -8,10 +8,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class CoffeeShopTest {
     // ---------------------------
-    // DefaultDiscount 测试
+    // DefaultDiscount test
     // ---------------------------
 
-    // 当原价小于20时，不打折
+    // When the original price is less than 20, no discount
     @Test
     public void testDefaultDiscount_NoDiscount() {
         DefaultDiscount discount = new DefaultDiscount();
@@ -21,7 +21,7 @@ public class CoffeeShopTest {
         assertEquals(19.0, discountedPrice, 0.001);
     }
 
-    // 当原价在20~29之间时，减2元
+    // When the original price is between 20 and 29, subtract 2 yuan
     @Test
     public void testDefaultDiscount_Above20() {
         DefaultDiscount discount = new DefaultDiscount();
@@ -31,7 +31,7 @@ public class CoffeeShopTest {
         assertEquals(20.0, discountedPrice, 0.001);
     }
 
-    // 当原价在30~49之间时，减5元
+    // When the original price is between 30 and 49, deduct 5 yuan
     @Test
     public void testDefaultDiscount_Above30() {
         DefaultDiscount discount = new DefaultDiscount();
@@ -41,7 +41,7 @@ public class CoffeeShopTest {
         assertEquals(30.0, discountedPrice, 0.001);
     }
 
-    // 当原价大于或等于50时，打8折
+    // When the original price is greater than or equal to 50, it's 20% off
     @Test
     public void testDefaultDiscount_Above50() {
         DefaultDiscount discount = new DefaultDiscount();
@@ -52,7 +52,7 @@ public class CoffeeShopTest {
     }
 
     // ---------------------------
-    // FoodAndBeverageDiscount 测试
+    // FoodAndBeverageDiscount test
     // ---------------------------
     @Test
     public void testFoodAndBeverageDiscount_NoDiscount() {
@@ -71,13 +71,13 @@ public class CoffeeShopTest {
         assertEquals(19*0.8, discountedPrice, 0.001);
     }
     // ---------------------------
-    // FreeCakeDiscount 测试
+    // FreeCakeDiscount test
     // ---------------------------
     @Test
     public void testFreeCakeDiscount() {
         FreeCakeDiscount discount = new FreeCakeDiscount();
         Order order = new Order("order6", "timestamp", "customer1");
-        // 添加2个 Cake 商品
+        // Add 2 Cake items
         Product cake = new Product("p3", "Cake", "Sweet", "Food", 4.0, 10);
         order.addItem(cake, 2);
 
@@ -94,31 +94,31 @@ public class CoffeeShopTest {
 
 
     // ---------------------------
-    // DiscountManager 测试
+    // DiscountManager test
     // ---------------------------
 
-    // 如果传入的折扣名称为 null 或空串或无效的折扣名称时，应使用默认的 "default" 规则
+    // If the discount name passed in is null or an empty string or an invalid discount name, the default" default" rule should be used
     @Test
     public void testDiscountManager_DefaultIfNullOrEmpty() {
         DiscountManager manager = new DiscountManager();
         Order order = new Order("order7", "timestamp", "customer1");
         double originalPrice = 50.0;
 
-        // 折扣名称为 null
+        // The discount name is null
         double discountedPrice = manager.applyDiscount(null, order, originalPrice);
         assertEquals(40.0, discountedPrice, 0.001);
 
-        // 折扣名称为空串
+        // Discount name is empty string
         discountedPrice = manager.applyDiscount("", order, originalPrice);
         assertEquals(40.0, discountedPrice, 0.001);
 
-        // 折扣名称为无效折扣名
+        // Discount name is invalid discount name
         discountedPrice = manager.applyDiscount("nonexistent", order, originalPrice);
         assertEquals(40.0, discountedPrice, 0.001);
     }
 
     // ---------------------------
-    // Order 总价计算测试
+    // Order total price calculation test
     // ---------------------------
 
     @Test
@@ -126,14 +126,14 @@ public class CoffeeShopTest {
         Order order = new Order("order8", "timestamp", "customer1");
         Product product1 = new Product("p4", "Sandwich", "Tasty", "Food", 5.0, 10);
         Product product2 = new Product("p5", "Juice", "Fresh", "Beverage", 3.5, 10);
-        // 添加 2 个 Sandwich，总价 10.0
+        // Add 2 sandwiches for a total price of 10.0
         order.addItem(product1, 2);
-        // 添加 3 个 Juice，总价 10.5
+        // Add 3 juice, the total price is 10.5
         order.addItem(product2, 3);
-        // 未调用 setTotalPrice 时，getTotalPrice 根据商品价格计算
+        // When setTotalPrice is not called, getTotalPrice is calculated based on the price of the item
         assertEquals(20.5, order.getTotalPrice(), 0.001);
 
-        // 调用 setTotalPrice 后，返回 set 的值
+        // After calling setTotalPrice, the value of set is returned
         order.setTotalPrice(18.0);
         assertEquals(18.0, order.getTotalPrice(), 0.001);
     }
@@ -144,19 +144,19 @@ public class CoffeeShopTest {
         Order order = new Order("order9", "timestamp", "customer1");
         Product product1 = new Product("p6", "Cake", "Sweet", "Food", 4.0, 10);
         Product product2 = new Product("p7", "Coffee", "Arabica", "Beverage", 8.0, 10);
-        // 添加商品：3蛋糕 + 1饮料
+        // Added items: 3 cakes + 1 drinks
         order.addItem(product1, 3);   // 4*3 = 12
         order.addItem(product2, 1); // 8*1 = 8
         double originalPrice = 20.0;
 
-        // 应用折扣策略
+        // Applied discount strategy
         double finalPrice = discountManager.applyDiscount("free_cake", order, originalPrice);
         finalPrice = discountManager.applyDiscount("food_and_beverage", order, finalPrice);
         assertEquals(16*0.8, finalPrice, 0.001);
     }
 
 
-    // 测试折扣应用优先级
+    // Test discount application priority
     @Test
     void testDiscountPriority() {
         DiscountManager discountManager = new DiscountManager();
@@ -164,7 +164,7 @@ public class CoffeeShopTest {
         Product product1 = new Product("c1", "Cake", "Sweet", "Food", 4.0, 10);
         Product product2 = new Product("f1", "Burger", "Juicy", "Food", 15.0, 10);
         Product product3 = new Product("b1", "Coffee", "Arabica", "Beverage", 8.0, 10);
-        // 添加商品：3蛋糕 + 2食品 + 1饮料 + 其他商品
+        // Add items: 3 cakes + 2 food + 1 drinks + other items
         order.addItem(product1, 3);      // 4*3 = 12
         order.addItem(product2, 2);      // 15*2 = 30
         order.addItem(product3, 1); // 8*1 = 8
@@ -172,15 +172,15 @@ public class CoffeeShopTest {
         order.addItem(other, 1);     // 30*1 = 30
         double originalPrice = 80.0;
 
-        // 模拟placeOrder方法逻辑
+        // Simulates placeOrder method logic
         double tempPrice = originalPrice;
 
-        // 1. 检查蛋糕折扣
+        // 1. Check for cake discounts
         if (countCakes(order) >= 3) {
             tempPrice = discountManager.applyDiscount("free_cake", order, tempPrice);
         }
 
-        // 2. 检查食品饮料组合
+        // 2. Check food and drink combinations
         if (hasFoodBeverageCombo(order)) {
             tempPrice = discountManager.applyDiscount("food_and_beverage", order, tempPrice);
         } else {
@@ -212,10 +212,10 @@ public class CoffeeShopTest {
         Order order = new Order("order11", "timestamp", "customer1");
         Product product1 = new Product("p1", "Cake", "Sweet", "Food", 4.0, 2);
         Map<Product, Integer> selectedProducts = new HashMap<>();
-        // 先将商品数量加到库存上限
+        // First increase the quantity of goods to the stock limit
         selectedProducts.put(product1, 2);
 
-        // 模拟点击按钮时的逻辑
+        // Simulate the logic of clicking the button
         Exception exception = assertThrows(OutOfStockException.class, () -> {
             int quantity = selectedProducts.getOrDefault(product1, 0);
             if (quantity >= product1.getStock()) {
@@ -225,10 +225,10 @@ public class CoffeeShopTest {
             selectedProducts.put(product1, quantity);
         });
 
-        // 验证异常信息是否正确
+        // Verify that the exception information is correct
         assertEquals("Out of stock!", exception.getMessage());
 
-        // 确保数量没有被增加
+        // Make sure the quantity is not increased
         assertEquals(2, selectedProducts.get(product1));
     }
 
