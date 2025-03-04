@@ -6,7 +6,7 @@ import java.io.*;
 import java.util.*;
 import java.util.List;
 
-// 自定义异常：库存不足异常
+// Custom exception: Inventory shortage exception
 class OutOfStockException extends Exception {
     public OutOfStockException(String message) {
         super(message);
@@ -19,8 +19,8 @@ class Product {
     private String description;
     private String category;
     private double price;
-    private int stock;      // 商品库存
-    private int orderCount; // 记录商品被点单的次数
+    private int stock;      // Commodity inventory
+    private int orderCount; // Keep track of how many times items are ordered
 
     public Product(String id, String name, String description, String category, double price, int stock) {
         this.id = id;
@@ -48,14 +48,14 @@ class Product {
     public String getDescription() { return description; }
 }
 
-// Order 类
+// Order class
 class Order {
     private String orderId;
     private String timeStamp;
     private String customerId;
     private List<Product> items;
     private boolean isCompleted;
-    private double totalPrice; // 新增的 totalPrice 字段
+    private double totalPrice; // Added totalPrice field
 
     public Order(String orderId, String timestamp, String customerId) {
         this.orderId = orderId;
@@ -63,7 +63,7 @@ class Order {
         this.customerId = customerId;
         this.items = new ArrayList<>();
         this.isCompleted = false;
-        this.totalPrice = 0; // 初始化为0
+        this.totalPrice = 0; // Initialize to 0
     }
 
     public void addItem(Product product) { items.add(product); }
@@ -74,12 +74,12 @@ class Order {
     }
     public void deleteItem(Product product) { items.remove(product); }
 
-    // 获取订单总价
+    // Get the total order price
     public double getTotalPrice() {
         return totalPrice > 0 ? totalPrice : Math.round(items.stream().mapToDouble(Product::getPrice).sum() * 100.0) / 100.0;
     }
 
-    // 设置总价
+    // Set aggregate price
     public void setTotalPrice(double totalPrice) {
         this.totalPrice = Math.round(totalPrice * 100.0) / 100.0;
     }
@@ -94,7 +94,7 @@ class Order {
     public String getTimeStamp(){return timeStamp;}
 }
 
-// Customer 类
+// Customer class
 class Customer {
     private String customerId;
     private String name;
@@ -110,13 +110,13 @@ class Customer {
     public List<Order> getOrderHistory() { return orders; }
 }
 
-// Menu 类
+// Menu class
 class Menu {
     private List<Product> products;
 
     public Menu() { this.products = new ArrayList<>(); }
     public List<Product> getAllProducts() {
-        return new ArrayList<>(products); // 返回产品的副本
+        return new ArrayList<>(products); // Returns a copy of the product
     }
     public void loadFromFile(String filePath) {}
     public void displayMenu() { products.forEach(p -> System.out.println(p.getDetails())); }
@@ -125,24 +125,22 @@ class Menu {
     public boolean removeProduct(String productId) { return products.removeIf(p -> p.getId().equals(productId)); }
 }
 
-// OrderManager 类
+// OrderManager class
 class OrderManager {
     private List<Order> orders;
-    private double totalRevenue; // 新增的 totalRevenue 字段
+    private double totalRevenue; // Added totalRevenue field
 
     public OrderManager() {
         this.orders = new ArrayList<>();
-        this.totalRevenue = 0; // 初始化 totalRevenue 为 0
+        this.totalRevenue = 0; // Initialize totalRevenue to 0
     }
-
-    public void loadOrdersFromFile(String filePath) {} // TODO
 
     public void generateReport(Menu menu) {
         System.out.println("=== Sales Report ===");
         for (Product product : menu.getAllProducts()) {
             System.out.println(product.getDetails() + " - Ordered " + product.getOrderCount() + " times");
         }
-        System.out.println("Total Revenue: $" + totalRevenue); // 直接使用 totalRevenue
+        System.out.println("Total Revenue: $" + totalRevenue); // Use totalRevenue directly
     }
 
     public void addOrder(Order order) {
@@ -157,13 +155,13 @@ class OrderManager {
         return orders.removeIf(o -> o.getOrderDetails().contains(orderId));
     }
 
-    // 新增方法：将订单的总价添加到 totalRevenue 中
+    // New method: Add the total price of the order to totalRevenue
     public void addToTotalRevenue(double amount) {
         this.totalRevenue += amount;
     }
 }
 
-//折扣抽象类
+//Discount abstract class
 abstract class Discount {
     private String discountName;
     public Discount(String discountName) {
@@ -173,79 +171,78 @@ abstract class Discount {
         return discountName;
     }
 
-    // 抽象方法，子类实现具体折扣规则
+    // Abstract methods, subclasses implement specific discount rules
     public abstract double applyDiscount(Order order, double originalPrice);
 }
 
-//DiscountManager类
+//DiscountManager class
 class DiscountManager {
     private Map<String, Discount> discountRules;
 
     public DiscountManager() {
         this.discountRules = new HashMap<>();
-        // 默认添加 "default" 折扣规则
+        // Add default discount rule
         addDiscount(new DefaultDiscount());
-        // 添加 "food_and_beverage" 折扣规则
+        // Add "food_and_beverage" discount rule
         addDiscount(new FoodAndBeverageDiscount());
-        // 添加 "free_cake" 折扣规则
+        // Add "free_cake" discount rule
         addDiscount(new FreeCakeDiscount());
     }
 
-    // 添加折扣规则
+    // Add discount rule
     public void addDiscount(Discount discount) {
         discountRules.put(discount.getDiscountName(), discount);
     }
 
-    // 删除折扣规则
+    // Remove discount rule
     public boolean removeDiscount(Discount discount) {
         return discountRules.remove(discount.getDiscountName()) != null;
     }
 
-    // 应用折扣规则，默认使用"default"折扣规则
+    // Apply discount rule, default to "default" discount rule
     public double applyDiscount(String discountName, Order order, double originalPrice) {
-        // 如果折扣名称为空或null，使用默认折扣规则
+        // If discount name is empty or null, use default discount rule
         if (discountName == null || discountName.isEmpty()) {
             discountName = "default";
         }
 
-
-        // 获取指定折扣规则并应用，如果没有该规则，则返回原价
+        // Get the specified discount rule and apply it, if the rule does not exist, return the original price
         Discount discount = discountRules.getOrDefault(discountName, new DefaultDiscount());
         return discount.applyDiscount(order,originalPrice);
     }
 }
 
-//默认折扣
+//Default discount
 class DefaultDiscount extends Discount {
     public DefaultDiscount() {
-        super("default"); // 设置折扣名称为 "default"
+        super("default"); // Set discount name to "default"
     }
 
     @Override
     public double applyDiscount(Order order, double originalPrice) {
 //        double total = order.getTotalPrice();
 
-        // 满50打8折
+        // 20% off for orders over $50
         if (originalPrice >= 50) {
             return originalPrice*0.8;
         }
-        // 满30减5
+        // $5 off for orders over $30
         else if (originalPrice >= 30) {
             return originalPrice - 5;
         }
-        // 满20减2
+        // $2 off for orders over $20
         else if (originalPrice >= 20) {
             return originalPrice - 2;
         }
 
-        return originalPrice; // 不满足时，返回原价
+        return originalPrice; // Return original price if no conditions are met
     }
 }
 
-// Food 和 Beverage 折扣规则
+// Food and Beverage discount rule
 class FoodAndBeverageDiscount extends Discount {
     public FoodAndBeverageDiscount() {
-        super("food_and_beverage"); // 设置折扣名称为 "food_and_beverage"
+        super("food_and_beverage"); // Set discount name to "food_and_beverage"
     }
 
     @Override
@@ -253,7 +250,7 @@ class FoodAndBeverageDiscount extends Discount {
         int foodCount = 0;
         int beverageCount = 0;
 
-        // 遍历订单中的商品，统计 Food 和 Beverage 的数量
+        // Traverse the items in the order, count the number of Food and Beverage items
         for (Product product : order.getItems()) {
             if ("Food".equals(product.getCategory())) {
                 foodCount++;
@@ -262,39 +259,39 @@ class FoodAndBeverageDiscount extends Discount {
             }
         }
 
-        // 如果满足条件（2个或以上 Food 且 1个或以上 Beverage），则打8折
+        // If conditions are met (2 or more Food items and 1 or more Beverage items), apply 20% off
         if (foodCount >= 2 && beverageCount >= 1) {
             return originalPrice * 0.8;
         }
 
-        // 不满足条件时，返回原价
+        // Return original price if conditions are not met
         return originalPrice;
     }
 }
 
-// Free cake 折扣规则
+// Free cake discount rule
 class FreeCakeDiscount extends Discount {
     public FreeCakeDiscount() {
-        super("free_cake"); // 设置折扣名称为 "free_cake"
+        super("free_cake"); // Set discount name to "free_cake"
     }
 
     @Override
     public double applyDiscount(Order order, double originalPrice) {
         int cakeCount = 0;
 
-        // 遍历订单中的商品，统计 Cake 的数量
+        // Traverse the items in the order, count the number of Cake items
         for (Product product : order.getItems()) {
             if ("Cake".equals(product.getName())) {
                 cakeCount++;
             }
         }
 
-        // 如果满足条件（购买的Cake数量大于或等于3），则免去一个Cake的价格
+        // If conditions are met (3 or more Cake items), deduct the price of one Cake
         if (cakeCount >= 3) {
             return originalPrice - 4.0;
         }
 
-        // 不满足条件时，返回原价
+        // Return original price if conditions are not met
         return originalPrice;
     }
 }
@@ -309,7 +306,7 @@ public class CoffeeShop {
     private JPanel productPanel;
     private JTextArea orderDetails;
     private JButton placeOrderButton;
-    private Map<Product, Integer> selectedProducts; // 商品和对应的购买数量
+    private Map<Product, Integer> selectedProducts; // Product and corresponding purchase quantity
 
     public CoffeeShop() {
         menu = new Menu();
@@ -331,7 +328,6 @@ public class CoffeeShop {
                 }
             }
         } catch (IOException e) {
-            //TODO:
             System.out.println("Error loading menu: " + e.getMessage());
         }
     }
@@ -341,23 +337,23 @@ public class CoffeeShop {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
-                if (parts.length == 5) {  // 确保格式为：订单编号,时间戳,用户编号,商品编号,点单数量
+                if (parts.length == 5) {  // Ensure the format is: order ID, timestamp, customer ID, product ID, quantity
                     String orderId = parts[0];
                     String timestamp = parts[1];
                     String customerId = parts[2];
                     String productId = parts[3];
                     int quantity = Integer.parseInt(parts[4]);
 
-                    // 创建一个新的 Order 对象
+                    // Create a new Order object
                     Order order = new Order(orderId, timestamp, customerId);
 
-                    // 根据产品ID获取对应的产品
+                    // Get the corresponding product based on the product ID
                     Product product = menu.getProductById(productId);
                     if (product != null) {
-                        order.addItem(product, quantity);  // 将产品添加到订单
+                        order.addItem(product, quantity);  // Add the product to the order
                     }
 
-                    // 将订单添加到订单管理器
+                    // Add the order to the order manager
                     orderManager.addOrder(order);
                 }
             }
@@ -369,17 +365,17 @@ public class CoffeeShop {
     private void setupGUI() {
         frame = new JFrame("Order Management System");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(800, 600); // 缩小窗口尺寸
+        frame.setSize(800, 600); // Reduce window size
         frame.setLayout(new BorderLayout());
 
-        // 渐变背景
+        // Gradient background
         JPanel backgroundPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
-                super.paintComponent(g); // 确保调用父类绘制方法
+                super.paintComponent(g); // Ensure parent class drawing method is called
                 Graphics2D g2d = (Graphics2D) g;
-                Color color1 = new Color(255, 223, 186); // 浅橙色
-                Color color2 = new Color(255, 182, 193); // 浅粉色
+                Color color1 = new Color(255, 223, 186); // Light orange
+                Color color2 = new Color(255, 182, 193); // Light pink
                 GradientPaint gp = new GradientPaint(0, 0, color1, getWidth(), getHeight(), color2);
                 g2d.setPaint(gp);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -389,70 +385,70 @@ public class CoffeeShop {
         frame.setContentPane(backgroundPanel);
 
         JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.setOpaque(false); // 标签透明
+        tabbedPane.setOpaque(false); // Transparent tabs
 
-        // 商品面板
+        // Product panel
         productPanel = new JPanel();
-        productPanel.setLayout(new GridLayout(0, 2, 10, 10)); // 改为 2 列网格布局
-        productPanel.setOpaque(false); // 使面板透明
+        productPanel.setLayout(new GridLayout(0, 2, 10, 10)); // Change to 2-column grid layout
+        productPanel.setOpaque(false); // Make panel transparent
 
         for (Product product : menu.getAllProducts()) {
-            // 创建卡片面板
+            // Create card panel
             JPanel cardPanel = new JPanel(new BorderLayout()) {
                 @Override
                 protected void paintComponent(Graphics g) {
-                    super.paintComponent(g); // 确保调用父类绘制方法
+                    super.paintComponent(g); // Ensure parent class drawing method is called
                     Graphics2D g2d = (Graphics2D) g;
-                    g2d.setColor(new Color(255, 255, 255, 200)); // 半透明白色背景
-                    g2d.fillRect(0, 0, getWidth(), getHeight()); // 填充背景
+                    g2d.setColor(new Color(255, 255, 255, 200)); // Semi-transparent white background
+                    g2d.fillRect(0, 0, getWidth(), getHeight()); // Fill background
                 }
             };
-            cardPanel.setOpaque(false); // 确保面板透明
-            cardPanel.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 0, 50), 2)); // 边框
-            cardPanel.setPreferredSize(new Dimension(350, 150)); // 调整卡片尺寸
+            cardPanel.setOpaque(false); // Ensure panel is transparent
+            cardPanel.setBorder(BorderFactory.createLineBorder(new Color(0, 0, 0, 50), 2)); // Border
+            cardPanel.setPreferredSize(new Dimension(350, 150)); // Adjust card size
 
-            // 商品信息面板
+            // Product info panel
             JPanel infoPanel = new JPanel();
             infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-            infoPanel.setOpaque(false); // 使面板透明
+            infoPanel.setOpaque(false); // Make panel transparent
 
-            // 商品名称
+            // Product name
             JLabel nameLabel = new JLabel("<html><b>" + product.getName() + "</b></html>");
             nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
             infoPanel.add(nameLabel);
 
-            // 商品描述
+            // Product description
             JTextArea descriptionArea = new JTextArea(product.getDescription());
             descriptionArea.setFont(new Font("Arial", Font.PLAIN, 12));
             descriptionArea.setLineWrap(true);
             descriptionArea.setWrapStyleWord(true);
             descriptionArea.setEditable(false);
-            descriptionArea.setOpaque(false); // 透明背景
+            descriptionArea.setOpaque(false); // Transparent background
             infoPanel.add(descriptionArea);
 
-            // 商品价格
+            // Product price
             JLabel priceLabel = new JLabel("Price: $" + product.getPrice());
             priceLabel.setFont(new Font("Arial", Font.PLAIN, 12));
             infoPanel.add(priceLabel);
 
-            // 数量选择面板
+            // Quantity selection panel
             JPanel quantityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            quantityPanel.setOpaque(false); // 使面板透明
+            quantityPanel.setOpaque(false); // Make panel transparent
 
             JButton minusButton = new JButton("-");
             JLabel quantityLabel = new JLabel("0");
-            quantityLabels.add(quantityLabel); // 将标签添加到列表
+            quantityLabels.add(quantityLabel); // Add label to list
             JButton plusButton = new JButton("+");
 
-            // 自定义按钮样式
-            minusButton.setBackground(new Color(255, 183, 197)); // 樱花粉
+            // Custom button style
+            minusButton.setBackground(new Color(255, 183, 197)); // Cherry blossom pink
             minusButton.setForeground(Color.WHITE);
             minusButton.setFocusPainted(false);
-            plusButton.setBackground(new Color(152, 251, 152)); // 抹茶绿
+            plusButton.setBackground(new Color(152, 251, 152)); // Matcha green
             plusButton.setForeground(Color.WHITE);
             plusButton.setFocusPainted(false);
 
-            // 按钮点击事件
+            // Button click events
             minusButton.addActionListener(e -> {
                 int quantity = selectedProducts.getOrDefault(product, 0);
                 if (quantity > 0) {
@@ -486,32 +482,32 @@ public class CoffeeShop {
         }
 
         JScrollPane productScroll = new JScrollPane(productPanel);
-        productScroll.setOpaque(false); // 使滚动面板透明
-        productScroll.getViewport().setOpaque(false); // 使视口透明
-        productScroll.setPreferredSize(new Dimension(700, 450)); // 调整滚动面板尺寸
+        productScroll.setOpaque(false); // Make scroll pane transparent
+        productScroll.getViewport().setOpaque(false); // Make viewport transparent
+        productScroll.setPreferredSize(new Dimension(700, 450)); // Adjust scroll pane size
         tabbedPane.addTab("Products", productScroll);
 
-        // 订单面板
+        // Order panel
         JPanel orderPanel = new JPanel();
-        orderPanel.setOpaque(false); // 使面板透明
-        orderPanel.setPreferredSize(new Dimension(700, 450)); // 调整订单面板尺寸
+        orderPanel.setOpaque(false); // Make panel transparent
+        orderPanel.setPreferredSize(new Dimension(700, 450)); // Adjust order panel size
         tabbedPane.addTab("Orders", orderPanel);
 
 
-        // 折扣面板
+        // Discount panel
         JPanel discountPanel = new JPanel();
-        discountPanel.setOpaque(false); // 使面板透明
-        discountPanel.setLayout(new BorderLayout()); // 使用 BorderLayout 布局
+        discountPanel.setOpaque(false); // Make panel transparent
+        discountPanel.setLayout(new BorderLayout()); // Use BorderLayout
 
-        // 创建 JTextArea 来显示折扣信息
+        // Create JTextArea to display discount information
         JTextArea discountTextArea = new JTextArea();
-        discountTextArea.setEditable(false); // 设置为不可编辑
-        discountTextArea.setOpaque(false); // 透明背景
-        discountTextArea.setFont(new Font("Arial", Font.PLAIN, 14)); // 设置字体
-        discountTextArea.setLineWrap(true); // 自动换行
-        discountTextArea.setWrapStyleWord(true); // 按单词换行
+        discountTextArea.setEditable(false); // Set to non-editable
+        discountTextArea.setOpaque(false); // Transparent background
+        discountTextArea.setFont(new Font("Arial", Font.PLAIN, 14)); // Set font
+        discountTextArea.setLineWrap(true); // Auto wrap
+        discountTextArea.setWrapStyleWord(true); // Wrap by word
 
-        // 设置折扣信息文本
+        // Set discount information text
         String discountInfo = "1. Free Cake\n" +
                 "   - Buy three or more cakes and get one for free.\n\n" +
                 "2. Single-Person Meal Deal\n" +
@@ -522,27 +518,27 @@ public class CoffeeShop {
                 "   - Spend $30 and get $5 off.\n" +
                 "   - Spend $50 and enjoy a 20% discount.";
 
-        discountTextArea.setText(discountInfo); // 设置文本内容
+        discountTextArea.setText(discountInfo); // Set text content
 
-        // 将 JTextArea 添加到 JScrollPane 中，以便支持滚动
+        // Add JTextArea to JScrollPane to support scrolling
         JScrollPane discountScrollPane = new JScrollPane(discountTextArea);
-        discountScrollPane.setOpaque(false); // 使滚动面板透明
-        discountScrollPane.getViewport().setOpaque(false); // 使视口透明
+        discountScrollPane.setOpaque(false); // Make scroll pane transparent
+        discountScrollPane.getViewport().setOpaque(false); // Make viewport transparent
 
-        // 将 JScrollPane 添加到 discountPanel 中
+        // Add JScrollPane to discountPanel
         discountPanel.add(discountScrollPane, BorderLayout.CENTER);
 
-        // 将 discountPanel 添加到 tabbedPane 中
+        // Add discountPanel to tabbedPane
         tabbedPane.addTab("Discounts", discountPanel);
 
 
         backgroundPanel.add(tabbedPane, BorderLayout.CENTER);
 
-        // 下单按钮
+        // Place order button
         placeOrderButton = new JButton("Place Order");
-        placeOrderButton.setBackground(new Color(70, 130, 180)); // 星空蓝
+        placeOrderButton.setBackground(new Color(70, 130, 180)); // Starry sky blue
         placeOrderButton.setForeground(Color.WHITE);
-        placeOrderButton.setFont(new Font("Arial", Font.BOLD, 14)); // 缩小字体
+        placeOrderButton.setFont(new Font("Arial", Font.BOLD, 14)); // Reduce font size
         placeOrderButton.setFocusPainted(false);
         placeOrderButton.addActionListener(new ActionListener() {
             @Override
@@ -560,13 +556,13 @@ public class CoffeeShop {
         orderTextArea.setEditable(false);
         orderTextArea.setOpaque(false);
 
-        // 统计每个商品的点单数量
+        // Count the quantity of each product in the order
         Map<Product, Integer> productQuantityMap = new HashMap<>();
         for (Product product : order.getItems()) {
             productQuantityMap.put(product, productQuantityMap.getOrDefault(product, 0) + 1);
         }
 
-        // 显示订单信息
+        // Display order information
         StringBuilder orderDetails = new StringBuilder();
         for (Map.Entry<Product, Integer> entry : productQuantityMap.entrySet()) {
             Product product = entry.getKey();
@@ -581,16 +577,16 @@ public class CoffeeShop {
                         .append(", ")
                         .append(product.getId())
                         .append(", ")
-                        .append(quantity) // 使用实际点单数量
+                        .append(quantity) // Use actual order quantity
                         .append("\n");
             }
         }
 
         orderTextArea.setText(orderDetails.toString());
 
-        // 将订单信息添加到“Order”界面
+        // Add order information to the "Order" interface
         JPanel orderPanel = (JPanel) ((JTabbedPane) frame.getContentPane().getComponent(0)).getComponent(1);
-//        orderPanel.removeAll(); // 清空之前的订单信息
+//        orderPanel.removeAll(); // Clear previous order information
         orderPanel.add(new JScrollPane(orderTextArea));
         orderPanel.revalidate();
         orderPanel.repaint();
@@ -601,8 +597,8 @@ public class CoffeeShop {
         for (Map.Entry<Product, Integer> entry : selectedProducts.entrySet()) {
             if (entry.getValue() > 0) {
                 order.addItem(entry.getKey(), entry.getValue());
-                entry.getKey().incrementOrderCount(entry.getValue()); // 增加商品的点单次数
-                entry.getKey().setStock(entry.getKey().getStock() - entry.getValue()); // 减少库存
+                entry.getKey().incrementOrderCount(entry.getValue()); // Increase the order count of the product
+                entry.getKey().setStock(entry.getKey().getStock() - entry.getValue()); // Reduce stock
             }
         }
 
@@ -611,10 +607,10 @@ public class CoffeeShop {
             return;
         }
 
-        // 计算原始总价
+        // Calculate the original total price
         double totalPrice = order.getTotalPrice();
 
-        // 检查是否满足 Food 和 Beverage 的条件
+        // Check if Food and Beverage conditions are met
         int foodCount = 0;
         int beverageCount = 0;
         int cakeCount = 0;
@@ -631,11 +627,11 @@ public class CoffeeShop {
         }
 
 
-        // 应用折扣规则
+        // Apply discount rules
         if(cakeCount >= 3){
             System.out.println("1111111111111");
             totalPrice = discountManager.applyDiscount("free_cake", order, totalPrice);
-            foodCount--; //免费的蛋糕不计入折扣计算
+            foodCount--; // Free cake does not count towards discount calculation
         }
 
         if (foodCount >= 2 && beverageCount >= 1) {
@@ -644,28 +640,28 @@ public class CoffeeShop {
             totalPrice = discountManager.applyDiscount("default", order, totalPrice);
         }
 
-        // 更新订单的总价
+        // Update the total price of the order
         order.setTotalPrice(totalPrice);
 
-        // 完成订单
+        // Complete the order
         order.completeOrder();
         orderManager.addOrder(order);
 
-        // 将订单的总价添加到 totalRevenue 中
+        // Add the total price of the order to totalRevenue
         orderManager.addToTotalRevenue(totalPrice);
 
-        // 显示购买成功弹窗
+        // Display purchase success popup
         JOptionPane.showMessageDialog(frame, "Order Placed Successfully!\n" + order.getOrderDetails());
 
-        // 清空已选商品
+        // Clear selected products
         selectedProducts.clear();
 
-        // 重置界面中的商品数量显示
+        // Reset product quantity display in the interface
         for (JLabel quantityLabel : quantityLabels) {
             quantityLabel.setText("0");
         }
 
-        // 将订单显示在“Order”界面中
+        // Display the order in the "Order" interface
         displayOrderInGUI(order);
     }
 
@@ -675,19 +671,19 @@ public class CoffeeShop {
         coffeeShop.frame.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                // 生成报告
+                // Generate report
                 coffeeShop.orderManager.generateReport(coffeeShop.menu);
 
-                // 将订单追加到 order.txt 文件中
+                // Append orders to order.txt file
                 try (BufferedWriter bw = new BufferedWriter(new FileWriter("orders.txt", true))) {
                     for (Order order : coffeeShop.orderManager.getOrders()) {
-                        // 统计每个商品的点单数量
+                        // Count the quantity of each product in the order
                         Map<Product, Integer> productQuantityMap = new HashMap<>();
                         for (Product product : order.getItems()) {
                             productQuantityMap.put(product, productQuantityMap.getOrDefault(product, 0) + 1);
                         }
 
-                        // 写入订单信息
+                        // Write order information
                         for (Map.Entry<Product, Integer> entry : productQuantityMap.entrySet()) {
                             Product product = entry.getKey();
                             int quantity = entry.getValue();
@@ -697,7 +693,7 @@ public class CoffeeShop {
                                         order.getTimeStamp() + "," +
                                         order.getCustomerId() + "," +
                                         product.getId() + "," +
-                                        quantity); // 使用实际点单数量
+                                        quantity); // Use actual order quantity
                                 bw.newLine();
                             }
                         }
