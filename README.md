@@ -1,4 +1,3 @@
-# CW_coffeeShop
 # Coffee Shop Order Management System
 
 This is a simple coffee shop order management system implemented in Java. It includes a graphical user interface (GUI) built using Swing, and it supports product management, order placement, discount application, and sales reporting.
