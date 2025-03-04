@@ -497,11 +497,44 @@ public class CoffeeShop {
         orderPanel.setPreferredSize(new Dimension(700, 450)); // 调整订单面板尺寸
         tabbedPane.addTab("Orders", orderPanel);
 
+
         // 折扣面板
         JPanel discountPanel = new JPanel();
         discountPanel.setOpaque(false); // 使面板透明
-        discountPanel.setPreferredSize(new Dimension(700, 450)); // 调整折扣面板尺寸
+        discountPanel.setLayout(new BorderLayout()); // 使用 BorderLayout 布局
+
+        // 创建 JTextArea 来显示折扣信息
+        JTextArea discountTextArea = new JTextArea();
+        discountTextArea.setEditable(false); // 设置为不可编辑
+        discountTextArea.setOpaque(false); // 透明背景
+        discountTextArea.setFont(new Font("Arial", Font.PLAIN, 14)); // 设置字体
+        discountTextArea.setLineWrap(true); // 自动换行
+        discountTextArea.setWrapStyleWord(true); // 按单词换行
+
+        // 设置折扣信息文本
+        String discountInfo = "1. Free Cake\n" +
+                "   - Buy three or more cakes and get one for free.\n\n" +
+                "2. Single-Person Meal Deal\n" +
+                "   - Purchase at least two food items and one beverage to enjoy a 20% discount.\n" +
+                "   (This discount cannot be combined with the default discount.)\n\n" +
+                "3. Default Discount\n" +
+                "   - Spend $20 and get $2 off.\n" +
+                "   - Spend $30 and get $5 off.\n" +
+                "   - Spend $50 and enjoy a 20% discount.";
+
+        discountTextArea.setText(discountInfo); // 设置文本内容
+
+        // 将 JTextArea 添加到 JScrollPane 中，以便支持滚动
+        JScrollPane discountScrollPane = new JScrollPane(discountTextArea);
+        discountScrollPane.setOpaque(false); // 使滚动面板透明
+        discountScrollPane.getViewport().setOpaque(false); // 使视口透明
+
+        // 将 JScrollPane 添加到 discountPanel 中
+        discountPanel.add(discountScrollPane, BorderLayout.CENTER);
+
+        // 将 discountPanel 添加到 tabbedPane 中
         tabbedPane.addTab("Discounts", discountPanel);
+
 
         backgroundPanel.add(tabbedPane, BorderLayout.CENTER);
 
