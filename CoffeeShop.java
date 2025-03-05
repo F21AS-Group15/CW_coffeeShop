@@ -19,7 +19,7 @@ class Product {
     private String description;
     private String category;
     private double price;
-    private int stock;      // Commodity inventory
+    private int stock;
     private int orderCount; // Keep track of how many times items are ordered
 
     public Product(String id, String name, String description, String category, double price, int stock) {
@@ -48,7 +48,7 @@ class Product {
     public String getDescription() { return description; }
 }
 
-// Order class
+
 class Order {
     private String orderId;
     private String timeStamp;
@@ -74,12 +74,10 @@ class Order {
     }
     public void deleteItem(Product product) { items.remove(product); }
 
-    // Get the total order price
     public double getTotalPrice() {
         return totalPrice > 0 ? totalPrice : Math.round(items.stream().mapToDouble(Product::getPrice).sum() * 100.0) / 100.0;
     }
 
-    // Set aggregate price
     public void setTotalPrice(double totalPrice) {
         this.totalPrice = Math.round(totalPrice * 100.0) / 100.0;
     }
@@ -94,7 +92,7 @@ class Order {
     public String getTimeStamp(){return timeStamp;}
 }
 
-// Customer class
+
 class Customer {
     private String customerId;
     private String name;
@@ -110,7 +108,7 @@ class Customer {
     public List<Order> getOrderHistory() { return orders; }
 }
 
-// Menu class
+
 class Menu {
     private List<Product> products;
 
@@ -125,14 +123,14 @@ class Menu {
     public boolean removeProduct(String productId) { return products.removeIf(p -> p.getId().equals(productId)); }
 }
 
-// OrderManager class
+
 class OrderManager {
     private List<Order> orders;
     private double totalRevenue; // Added totalRevenue field
 
     public OrderManager() {
         this.orders = new ArrayList<>();
-        this.totalRevenue = 0; // Initialize totalRevenue to 0
+        this.totalRevenue = 0;
     }
 
     public void generateReport(Menu menu) {
@@ -161,7 +159,7 @@ class OrderManager {
     }
 }
 
-//Discount abstract class
+
 abstract class Discount {
     private String discountName;
     public Discount(String discountName) {
@@ -175,7 +173,7 @@ abstract class Discount {
     public abstract double applyDiscount(Order order, double originalPrice);
 }
 
-//DiscountManager class
+
 class DiscountManager {
     private Map<String, Discount> discountRules;
 
@@ -212,7 +210,7 @@ class DiscountManager {
     }
 }
 
-//Default discount
+// Default discount
 class DefaultDiscount extends Discount {
     public DefaultDiscount() {
         super("default"); // Set discount name to "default"
@@ -220,8 +218,6 @@ class DefaultDiscount extends Discount {
 
     @Override
     public double applyDiscount(Order order, double originalPrice) {
-//        double total = order.getTotalPrice();
-
         // 20% off for orders over $50
         if (originalPrice >= 50) {
             return originalPrice*0.8;
@@ -239,7 +235,7 @@ class DefaultDiscount extends Discount {
     }
 }
 
-// Food and Beverage discount rule
+// Single set meal discount (2 foods + 1 beverage)
 class FoodAndBeverageDiscount extends Discount {
     public FoodAndBeverageDiscount() {
         super("food_and_beverage"); // Set discount name to "food_and_beverage"
@@ -319,6 +315,7 @@ public class CoffeeShop {
     }
 
     private void loadMenuFromFile(String filePath) {
+        // id, name, description, category, price, stock
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
             while ((line = br.readLine()) != null) {
@@ -577,7 +574,7 @@ public class CoffeeShop {
                         .append(", ")
                         .append(product.getId())
                         .append(", ")
-                        .append(quantity) // Use actual order quantity
+                        .append(quantity)
                         .append("\n");
             }
         }
@@ -586,7 +583,6 @@ public class CoffeeShop {
 
         // Add order information to the "Order" interface
         JPanel orderPanel = (JPanel) ((JTabbedPane) frame.getContentPane().getComponent(0)).getComponent(1);
-//        orderPanel.removeAll(); // Clear previous order information
         orderPanel.add(new JScrollPane(orderTextArea));
         orderPanel.revalidate();
         orderPanel.repaint();
@@ -610,7 +606,7 @@ public class CoffeeShop {
         // Calculate the original total price
         double totalPrice = order.getTotalPrice();
 
-        // Check if Food and Beverage conditions are met
+        // Check if discount conditions are met
         int foodCount = 0;
         int beverageCount = 0;
         int cakeCount = 0;
@@ -626,10 +622,8 @@ public class CoffeeShop {
 
         }
 
-
         // Apply discount rules
         if(cakeCount >= 3){
-            System.out.println("1111111111111");
             totalPrice = discountManager.applyDiscount("free_cake", order, totalPrice);
             foodCount--; // Free cake does not count towards discount calculation
         }
@@ -693,7 +687,7 @@ public class CoffeeShop {
                                         order.getTimeStamp() + "," +
                                         order.getCustomerId() + "," +
                                         product.getId() + "," +
-                                        quantity); // Use actual order quantity
+                                        quantity);
                                 bw.newLine();
                             }
                         }
