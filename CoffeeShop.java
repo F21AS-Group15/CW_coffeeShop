@@ -63,7 +63,7 @@ class Order {
         this.customerId = customerId;
         this.items = new ArrayList<>();
         this.isCompleted = false;
-        this.totalPrice = 0; // Initialize to 0
+        this.totalPrice = 0;
     }
 
     public void addItem(Product product) { items.add(product); }
