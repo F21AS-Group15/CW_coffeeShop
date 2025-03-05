@@ -55,7 +55,7 @@ public class CoffeeShopTest {
     // FoodAndBeverageDiscount test
     // ---------------------------
     @Test
-    public void testFoodAndBeverageDiscount_NoDiscount() {
+    public void testFoodAndBeverageDiscount() {
         FoodAndBeverageDiscount discount = new FoodAndBeverageDiscount();
         Order order = new Order("order5", "timestamp", "customer1");
         Product food = new Product("p1", "Burger", "Delicious", "Food", 8.0, 10);
@@ -80,7 +80,6 @@ public class CoffeeShopTest {
         // Add 2 Cake items
         Product cake = new Product("p3", "Cake", "Sweet", "Food", 4.0, 10);
         order.addItem(cake, 2);
-
         double originalPrice = 8.0;
         double discountedPrice = discount.applyDiscount(order, originalPrice);
         assertEquals(originalPrice, discountedPrice, 0.001);
@@ -99,7 +98,7 @@ public class CoffeeShopTest {
 
     // If the discount name passed in is null or an empty string or an invalid discount name, the default" default" rule should be used
     @Test
-    public void testDiscountManager_DefaultIfNullOrEmpty() {
+    public void testDiscountManager() {
         DiscountManager manager = new DiscountManager();
         Order order = new Order("order7", "timestamp", "customer1");
         double originalPrice = 50.0;
@@ -215,7 +214,6 @@ public class CoffeeShopTest {
         // First increase the quantity of goods to the stock limit
         selectedProducts.put(product1, 2);
 
-        // Simulate the logic of clicking the button
         Exception exception = assertThrows(OutOfStockException.class, () -> {
             int quantity = selectedProducts.getOrDefault(product1, 0);
             if (quantity >= product1.getStock()) {
