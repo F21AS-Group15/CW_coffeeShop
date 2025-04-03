@@ -1,5 +1,3 @@
-import org.junit.jupiter.params.shadow.com.univocity.parsers.common.DataValidationException;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -9,13 +7,14 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 
-// Custom exception: Inventory shortage exception
+// 自定义异常：库存不足异常
 class OutOfStockException extends Exception {
     public OutOfStockException(String message) {
         super(message);
     }
 }
 
+// 商品类
 class Product {
     private String id;
     private String name;
@@ -23,7 +22,7 @@ class Product {
     private String category;
     private double price;
     private int stock;
-    private int orderCount; // Keep track of how many times items are ordered
+    private int orderCount; // 记录商品被订购的次数
 
     public Product(String id, String name, String description, String category, double price, int stock) {
         if (id == null || id.isEmpty()) throw new IllegalArgumentException("产品ID不能为空");
@@ -40,10 +39,12 @@ class Product {
         this.orderCount = 0;
     }
 
+    // 获取商品详情
     public String getDetails() {
         return name + ": " + description + " (" + category + ") - $" + price + " (Stock: " + stock + ")";
     }
 
+    // Getter方法
     public double getPrice() { return price; }
     public String getCategory() { return category; }
     public String getId() { return id; }
@@ -55,6 +56,7 @@ class Product {
     public String getDescription() { return description; }
 }
 
+// 订单类
 class Order {
     private String orderId;
     private String timeStamp;
@@ -72,14 +74,18 @@ class Order {
         this.totalPrice = 0;
     }
 
+    // 添加商品到订单
     public void addItem(Product product) { items.add(product); }
     public void addItem(Product product, int amount) {
-        for (int i = 0; i < amount; i++){
+        for (int i = 0; i < amount; i++) {
             items.add(product);
         }
     }
+
+    // 从订单移除商品
     public void deleteItem(Product product) { items.remove(product); }
 
+    // 计算订单总价
     public double getTotalPrice() {
         return totalPrice > 0 ? totalPrice : Math.round(items.stream().mapToDouble(Product::getPrice).sum() * 100.0) / 100.0;
     }
@@ -88,10 +94,12 @@ class Order {
         this.totalPrice = Math.round(totalPrice * 100.0) / 100.0;
     }
 
+    // 获取订单详情
     public String getOrderDetails() {
         return "Order ID: " + orderId + "\nTime: " + timeStamp + "\nTotal: $" + getTotalPrice();
     }
 
+    // Getter和Setter方法
     public boolean isCompleted() { return isCompleted; }
     public void completeOrder() { this.isCompleted = true; }
     public void resetOrder() { this.isCompleted = false; }
@@ -101,6 +109,7 @@ class Order {
     public String getTimeStamp() { return timeStamp; }
 }
 
+// 菜单类
 class Menu {
     private Map<String, Product> products;
 
@@ -108,18 +117,22 @@ class Menu {
         this.products = new HashMap<>();
     }
 
+    // 获取所有商品
     public List<Product> getAllProducts() {
         return new ArrayList<>(products.values());
     }
 
+    // 显示菜单
     public void displayMenu() {
         products.values().forEach(p -> System.out.println(p.getDetails()));
     }
 
+    // 根据ID获取商品
     public Product getProductById(String productId) {
         return products.get(productId);
     }
 
+    // 添加商品
     public void addProduct(Product product) {
         if (products.containsKey(product.getId())) {
             throw new IllegalArgumentException("产品ID已存在: " + product.getId());
@@ -127,10 +140,12 @@ class Menu {
         products.put(product.getId(), product);
     }
 
+    // 移除商品
     public boolean removeProduct(String productId) {
         return products.remove(productId) != null;
     }
 
+    // 从文件加载菜单
     public void loadFromFile(String filePath) {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -145,16 +160,14 @@ class Menu {
                     }
 
                     // 验证每个字段
-                    String id = validateId(parts[0].trim(), lineNum);
-                    String name = validateName(parts[1].trim(), lineNum);
+                    String id = parts[0].trim();
+                    String name = parts[1].trim();
                     String description = parts[2].trim();
-                    String category = validateCategory(parts[3].trim(), lineNum);
-                    double price = validatePrice(parts[4].trim(), lineNum);
-                    int stock = validateStock(parts[5].trim(), lineNum);
+                    String category = parts[3].trim();
+                    double price = Double.parseDouble(parts[4].trim());
+                    int stock = Integer.parseInt(parts[5].trim());
 
                     addProduct(new Product(id, name, description, category, price, stock));
-                } catch (DataValidationException e) {
-                    System.err.println("第 " + lineNum + " 行数据验证失败: " + e.getMessage());
                 } catch (Exception e) {
                     System.err.println("第 " + lineNum + " 行处理错误: " + e.getMessage());
                 }
@@ -163,67 +176,9 @@ class Menu {
             System.err.println("加载菜单文件错误: " + e.getMessage());
         }
     }
-
-    // 新增数据验证方法
-    private String validateId(String id, int lineNum) throws DataValidationException {
-        if (id == null || id.isEmpty()) {
-            throw new DataValidationException("产品ID不能为空");
-        }
-        if (id.length() > 10) {
-            throw new DataValidationException("产品ID过长(最大10字符)");
-        }
-        return id;
-    }
-
-    private String validateName(String name, int lineNum) throws DataValidationException {
-        if (name == null || name.isEmpty()) {
-            throw new DataValidationException("产品名称不能为空");
-        }
-        if (name.length() > 50) {
-            throw new DataValidationException("产品名称过长(最大50字符)");
-        }
-        return name;
-    }
-
-    private String validateCategory(String category, int lineNum) throws DataValidationException {
-        Set<String> validCategories = Set.of("Beverage", "Food", "Dessert");
-        if (!validCategories.contains(category)) {
-            throw new DataValidationException("无效分类: " + category + " (有效值: Beverage, Food, Dessert)");
-        }
-        return category;
-    }
-
-    private double validatePrice(String priceStr, int lineNum) throws DataValidationException {
-        try {
-            double price = Double.parseDouble(priceStr);
-            if (price <= 0) {
-                throw new DataValidationException("价格必须大于0");
-            }
-            if (price > 1000) {
-                throw new DataValidationException("价格不能超过1000");
-            }
-            return Math.round(price * 100) / 100.0; // 保留两位小数
-        } catch (NumberFormatException e) {
-            throw new DataValidationException("价格格式无效: " + priceStr);
-        }
-    }
-
-    private int validateStock(String stockStr, int lineNum) throws DataValidationException {
-        try {
-            int stock = Integer.parseInt(stockStr);
-            if (stock < 0) {
-                throw new DataValidationException("库存不能为负数");
-            }
-            if (stock > 1000) {
-                throw new DataValidationException("库存不能超过1000");
-            }
-            return stock;
-        } catch (NumberFormatException e) {
-            throw new DataValidationException("库存格式无效: " + stockStr);
-        }
-    }
 }
 
+// 订单管理类
 class OrderManager {
     private List<Order> orders;
     private double totalRevenue;
@@ -233,30 +188,36 @@ class OrderManager {
         this.totalRevenue = 0;
     }
 
+    // 生成销售报告
     public void generateReport(Menu menu) {
-        System.out.println("=== Sales Report ===");
+        System.out.println("=== 销售报告 ===");
         for (Product product : menu.getAllProducts()) {
-            System.out.println(product.getDetails() + " - Ordered " + product.getOrderCount() + " times");
+            System.out.println(product.getDetails() + " - 已订购 " + product.getOrderCount() + " 次");
         }
-        System.out.println("Total Revenue: $" + totalRevenue);
+        System.out.println("总营收: $" + totalRevenue);
     }
 
+    // 添加订单
     public void addOrder(Order order) {
         orders.add(order);
     }
 
+    // 获取所有订单
     public List<Order> getOrders() {
         return orders;
     }
 
+    // 移除订单
     public boolean removeOrder(String orderId) {
         return orders.removeIf(o -> o.getOrderId().equals(orderId));
     }
 
+    // 增加总营收
     public void addToTotalRevenue(double amount) {
         this.totalRevenue += amount;
     }
 
+    // 从文件加载订单
     public void loadFromFile(String filePath, Menu menu) {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -270,25 +231,21 @@ class OrderManager {
                         continue;
                     }
 
-                    // 验证订单数据
-                    String orderId = validateOrderId(parts[0].trim(), lineNum);
-                    String timestamp = validateTimestamp(parts[1].trim(), lineNum);
-                    String customerId = validateCustomerId(parts[2].trim(), lineNum);
+                    String orderId = parts[0].trim();
+                    String timestamp = parts[1].trim();
+                    String customerId = parts[2].trim();
                     String productId = parts[3].trim();
-                    int quantity = validateQuantity(parts[4].trim(), lineNum);
+                    int quantity = Integer.parseInt(parts[4].trim());
 
-                    // 验证产品是否存在
                     Product product = menu.getProductById(productId);
                     if (product == null) {
                         System.err.println("第 " + lineNum + " 行错误: 产品ID不存在 - " + productId);
                         continue;
                     }
 
-                    // 验证库存是否足够
                     if (quantity > product.getStock()) {
                         System.err.println("第 " + lineNum + " 行警告: 订单数量超过当前库存 - 产品: " + product.getName() +
                                 ", 订单量: " + quantity + ", 库存: " + product.getStock());
-                        // 可以选择调整数量或跳过该订单
                         quantity = Math.min(quantity, product.getStock());
                         if (quantity == 0) continue;
                     }
@@ -297,8 +254,6 @@ class OrderManager {
                     order.addItem(product, quantity);
                     addOrder(order);
 
-                } catch (DataValidationException e) {
-                    System.err.println("第 " + lineNum + " 行数据验证失败: " + e.getMessage());
                 } catch (Exception e) {
                     System.err.println("第 " + lineNum + " 行处理错误: " + e.getMessage());
                 }
@@ -307,164 +262,149 @@ class OrderManager {
             System.err.println("加载订单文件错误: " + e.getMessage());
         }
     }
-
-    // 新增订单数据验证方法
-    private String validateOrderId(String orderId, int lineNum) throws DataValidationException {
-        if (orderId == null || orderId.isEmpty()) {
-            throw new DataValidationException("订单ID不能为空");
-        }
-        if (!orderId.matches("[A-Za-z0-9-]+")) {
-            throw new DataValidationException("订单ID包含无效字符");
-        }
-        return orderId;
-    }
-
-    private String validateTimestamp(String timestamp, int lineNum) throws DataValidationException {
-        try {
-            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(timestamp);
-            return timestamp;
-        } catch (Exception e) {
-            throw new DataValidationException("时间格式无效，应为 yyyy-MM-dd HH:mm:ss");
-        }
-    }
-
-    private String validateCustomerId(String customerId, int lineNum) throws DataValidationException {
-        if (customerId == null || customerId.isEmpty()) {
-            throw new DataValidationException("客户ID不能为空");
-        }
-        return customerId;
-    }
-
-    private int validateQuantity(String quantityStr, int lineNum) throws DataValidationException {
-        try {
-            int quantity = Integer.parseInt(quantityStr);
-            if (quantity <= 0) {
-                throw new DataValidationException("数量必须大于0");
-            }
-            if (quantity > 100) {
-                throw new DataValidationException("单次订单数量不能超过100");
-            }
-            return quantity;
-        } catch (NumberFormatException e) {
-            throw new DataValidationException("数量格式无效: " + quantityStr);
-        }
-    }
 }
 
-abstract class Discount {
-    private String discountName;
-    public Discount(String discountName) {
-        this.discountName = discountName;
-    }
-    public String getDiscountName() {
-        return discountName;
-    }
+// 折扣计算器类（重构后的核心折扣逻辑）
+class DiscountCalculator {
+    private static final double CAKE_PRICE = 4.0; // 蛋糕单价
 
-    public abstract double applyDiscount(Order order, double originalPrice);
-}
+    // 折扣计算结果
+    static class DiscountResult {
+        static final DiscountResult NO_DISCOUNT = new DiscountResult(false, "无可用折扣", 0.0);
 
-class DiscountManager {
-    private Map<String, Discount> discountRules;
+        final boolean applied;      // 是否应用了折扣
+        final String description;   // 折扣描述
+        final double discountAmount; // 折扣金额
 
-    public DiscountManager() {
-        this.discountRules = new HashMap<>();
-        addDiscount(new DefaultDiscount());
-        addDiscount(new FoodAndBeverageDiscount());
-        addDiscount(new FreeCakeDiscount());
-    }
-
-    public void addDiscount(Discount discount) {
-        discountRules.put(discount.getDiscountName(), discount);
-    }
-
-    public boolean removeDiscount(Discount discount) {
-        return discountRules.remove(discount.getDiscountName()) != null;
-    }
-
-    public double applyDiscount(String discountName, Order order, double originalPrice) {
-        if (discountName == null || discountName.isEmpty()) {
-            discountName = "default";
+        DiscountResult(boolean applied, String description, double discountAmount) {
+            this.applied = applied;
+            this.description = description;
+            this.discountAmount = discountAmount;
         }
-
-        Discount discount = discountRules.getOrDefault(discountName, new DefaultDiscount());
-        return discount.applyDiscount(order, originalPrice);
-    }
-}
-
-class DefaultDiscount extends Discount {
-    public DefaultDiscount() {
-        super("default");
     }
 
-    @Override
-    public double applyDiscount(Order order, double originalPrice) {
-        if (originalPrice >= 50) {
-            return originalPrice * 0.8;
+    /**
+     * 计算最佳折扣（按照优先级顺序）
+     * 优先级规则：蛋糕折扣 → 套餐折扣 → 默认折扣
+     */
+    public DiscountResult calculateBestDiscount(Order originalOrder) {
+        // 创建不包含蛋糕的订单副本用于后续折扣计算
+        Order orderWithoutCakes = createOrderWithoutCakes(originalOrder);
+
+        // 按优先级顺序计算各种折扣
+        DiscountResult cakeDiscount = applyCakeDiscount(originalOrder);
+        DiscountResult mealDealDiscount = applyMealDealDiscount(orderWithoutCakes);
+        DiscountResult defaultDiscount = applyDefaultDiscount(orderWithoutCakes);
+
+        // 根据优先级选择最优折扣
+        if (cakeDiscount.applied) {
+            return cakeDiscount;
         }
-        else if (originalPrice >= 30) {
-            return originalPrice - 5;
+        if (mealDealDiscount.applied) {
+            return mealDealDiscount;
         }
-        else if (originalPrice >= 20) {
-            return originalPrice - 2;
-        }
-        return originalPrice;
-    }
-}
-
-class FoodAndBeverageDiscount extends Discount {
-    public FoodAndBeverageDiscount() {
-        super("food_and_beverage");
+        return defaultDiscount;
     }
 
-    @Override
-    public double applyDiscount(Order order, double originalPrice) {
-        int foodCount = 0;
-        int beverageCount = 0;
+    // 创建不包含蛋糕的订单副本
+    private Order createOrderWithoutCakes(Order originalOrder) {
+        Order orderWithoutCakes = new Order(
+                originalOrder.getOrderId() + "-nocakes",
+                originalOrder.getTimeStamp(),
+                originalOrder.getCustomerId()
+        );
 
-        for (Product product : order.getItems()) {
-            if ("Food".equals(product.getCategory())) {
-                foodCount++;
-            } else if ("Beverage".equals(product.getCategory())) {
-                beverageCount++;
+        for (Product product : originalOrder.getItems()) {
+            if (!"Cake".equals(product.getName())) {
+                orderWithoutCakes.addItem(product);
             }
         }
+        return orderWithoutCakes;
+    }
+
+    // 应用蛋糕折扣规则：买3送1
+    private DiscountResult applyCakeDiscount(Order order) {
+        int cakeCount = countCakes(order);
+        if (cakeCount >= 3) {
+            int freeCakes = cakeCount / 3;
+            double discountAmount = freeCakes * CAKE_PRICE;
+            return new DiscountResult(
+                    true,
+                    "蛋糕买三送一 (减¥" + discountAmount + ")",
+                    discountAmount
+            );
+        }
+        return DiscountResult.NO_DISCOUNT;
+    }
+
+    // 应用套餐折扣规则：2份食品+1份饮料打8折
+    private DiscountResult applyMealDealDiscount(Order order) {
+        int foodCount = countItemsByCategory(order, "Food");
+        int beverageCount = countItemsByCategory(order, "Beverage");
 
         if (foodCount >= 2 && beverageCount >= 1) {
-            return originalPrice * 0.8;
+            double originalPrice = order.getTotalPrice();
+            double discountedPrice = originalPrice * 0.8;
+            return new DiscountResult(
+                    true,
+                    "套餐优惠 (8折)",
+                    originalPrice - discountedPrice
+            );
         }
+        return DiscountResult.NO_DISCOUNT;
+    }
 
-        return originalPrice;
+    // 应用默认折扣规则：
+    // - 满50元打8折
+    // - 满30元减5元
+    // - 满20元减2元
+    private DiscountResult applyDefaultDiscount(Order order) {
+        double originalPrice = order.getTotalPrice();
+
+        if (originalPrice >= 50) {
+            double discountedPrice = originalPrice * 0.8;
+            return new DiscountResult(
+                    true,
+                    "满50元8折优惠",
+                    originalPrice - discountedPrice
+            );
+        } else if (originalPrice >= 30) {
+            return new DiscountResult(
+                    true,
+                    "满30元减5元",
+                    5.0
+            );
+        } else if (originalPrice >= 20) {
+            return new DiscountResult(
+                    true,
+                    "满20元减2元",
+                    2.0
+            );
+        }
+        return DiscountResult.NO_DISCOUNT;
+    }
+
+    // 统计蛋糕数量
+    private int countCakes(Order order) {
+        return (int) order.getItems().stream()
+                .filter(p -> "Cake".equals(p.getName()))
+                .count();
+    }
+
+    // 按分类统计商品数量
+    private int countItemsByCategory(Order order, String category) {
+        return (int) order.getItems().stream()
+                .filter(p -> category.equals(p.getCategory()))
+                .count();
     }
 }
 
-class FreeCakeDiscount extends Discount {
-    public FreeCakeDiscount() {
-        super("free_cake");
-    }
-
-    @Override
-    public double applyDiscount(Order order, double originalPrice) {
-        int cakeCount = 0;
-
-        for (Product product : order.getItems()) {
-            if ("Cake".equals(product.getName())) {
-                cakeCount++;
-            }
-        }
-
-        if (cakeCount >= 3) {
-            return originalPrice - 4.0;
-        }
-
-        return originalPrice;
-    }
-}
-
+// 咖啡店主类
 public class CoffeeShop {
     private List<JLabel> quantityLabels = new ArrayList<>();
     private Menu menu;
     private OrderManager orderManager;
-    private DiscountManager discountManager;
+    private DiscountCalculator discountCalculator;  // 使用新的折扣计算器
     private JFrame frame;
     private JPanel productPanel;
     private JTextArea orderDetails;
@@ -479,16 +419,16 @@ public class CoffeeShop {
     public CoffeeShop() {
         menu = new Menu();
         orderManager = new OrderManager();
-        discountManager = new DiscountManager();
+        discountCalculator = new DiscountCalculator();  // 初始化折扣计算器
         selectedProducts = new HashMap<>();
-        allOrderSummaries = new StringBuilder(); // 初始化
+        allOrderSummaries = new StringBuilder();
 
         menu.loadFromFile("menu.txt");
         orderManager.loadFromFile("orders.txt", menu);
         setupGUI();
-//        loadAllOrdersToDisplay(); // 加载历史订单
     }
 
+    // GUI初始化方法（保持不变）
     private void setupGUI() {
         frame = new JFrame("咖啡店订单管理系统");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -756,42 +696,15 @@ public class CoffeeShop {
         frame.setVisible(true);
     }
 
-    /**
-     * 加载所有历史订单到显示区域
-     */
-    //TODO
-    private void loadAllOrdersToDisplay() {
-        allOrderSummaries = new StringBuilder();
-        allOrderSummaries.append("════════════ 历史订单记录 ════════════\n\n");
 
-        if (!orderManager.getOrders().isEmpty()) {
-            List<Order> sortedOrders = new ArrayList<>(orderManager.getOrders());
-            sortedOrders.sort((o1, o2) -> o2.getTimeStamp().compareTo(o1.getTimeStamp()));
-
-            for (Order order : sortedOrders) {
-                // 构建每个订单的详细内容
-                StringBuilder orderContent = new StringBuilder();
-                orderContent.append("┌──────────────────────────────┐\n");
-                orderContent.append("│ 订单编号: ").append(String.format("%-20s", order.getOrderId())).append("│\n");
-                // [保持原有的订单格式构建逻辑...]
-
-                allOrderSummaries.append(orderContent.toString());
-            }
-        } else {
-            allOrderSummaries.append("您的订单详情将在此显示...\n\n请从左侧菜单选择商品");
-        }
-
-        orderSummaryArea.setText(allOrderSummaries.toString());
-    }
-
-    // 新增方法：更新价格显示
+    // 更新价格显示
     private void updatePriceDisplay() {
-        // 计算总价
+        // 计算商品总价
         double totalPrice = selectedProducts.entrySet().stream()
                 .mapToDouble(entry -> entry.getKey().getPrice() * entry.getValue())
                 .sum();
 
-        // 创建临时订单计算折扣
+        // 创建临时订单用于折扣计算
         Order tempOrder = new Order("temp", "temp", "temp");
         selectedProducts.forEach((product, quantity) -> {
             if (quantity > 0) {
@@ -799,83 +712,16 @@ public class CoffeeShop {
             }
         });
 
-        // 应用折扣
-        double discountedPrice = discountManager.applyDiscount("default", tempOrder, totalPrice);
+        // 计算最佳折扣
+        DiscountCalculator.DiscountResult discount = discountCalculator.calculateBestDiscount(tempOrder);
+        double discountedPrice = totalPrice - discount.discountAmount;
 
-        // 更新显示
-        totalPriceLabel.setText(String.format("$%.2f", totalPrice));
-        discountedPriceLabel.setText(String.format("$%.2f", discountedPrice));
+        // 更新UI显示
+        totalPriceLabel.setText(String.format("¥%.2f", totalPrice));
+        discountedPriceLabel.setText(String.format("¥%.2f", discountedPrice));
     }
 
-    private void displayOrderInGUI(Order newOrder) {
-        SwingUtilities.invokeLater(() -> {
-            // 获取现有订单文本
-            String currentText = orderSummaryArea.getText();
-
-            // 如果是初始提示文本，则清空
-            if (currentText.startsWith("您的订单详情将在此显示...")) {
-                currentText = "";
-            }
-
-            // 准备新订单内容
-            StringBuilder orderContent = new StringBuilder();
-
-            // 添加分隔线
-            orderContent.append("\n════════════ 订单 ════════════\n");
-
-            // 订单基本信息
-            orderContent.append("订单编号: ").append(newOrder.getOrderId()).append("\n");
-            orderContent.append("下单时间: ").append(newOrder.getTimeStamp()).append("\n\n");
-            orderContent.append("购买商品:\n");
-
-            // 商品列表
-            Map<Product, Integer> productQuantities = new HashMap<>();
-            for (Product product : newOrder.getItems()) {
-                productQuantities.put(product, productQuantities.getOrDefault(product, 0) + 1);
-            }
-
-            for (Map.Entry<Product, Integer> entry : productQuantities.entrySet()) {
-                Product product = entry.getKey();
-                int quantity = entry.getValue();
-                orderContent.append(String.format(
-                        "▸ %-15s ×%-2d @ ¥%-6.2f = ¥%-7.2f\n",
-                        product.getName(),
-                        quantity,
-                        product.getPrice(),
-                        product.getPrice() * quantity
-                ));
-            }
-
-            // 订单金额
-            orderContent.append("\n订单总价: ¥").append(String.format("%.2f", newOrder.getTotalPrice())).append("\n");
-
-            // 将新订单内容添加到现有内容前面(最新订单显示在最上面)
-            orderSummaryArea.setText(orderContent.toString() + "\n" + currentText);
-            orderSummaryArea.setCaretPosition(0); // 滚动到顶部
-        });
-    }
-
-    /**
-     * 更新单个产品的库存显示
-     * @param product 要更新显示的产品对象
-     */
-    private void updateProductStockDisplay(Product product) {
-        SwingUtilities.invokeLater(() -> {
-            JLabel stockLabel = stockLabels.get(product.getId());
-            if (stockLabel != null) {
-                stockLabel.setText("库存: " + product.getStock());
-
-                // 根据库存量改变颜色提示
-                if (product.getStock() < 3) {
-                    stockLabel.setForeground(Color.RED);  // 库存紧张显示红色
-                } else {
-                    stockLabel.setForeground(new Color(100, 100, 100));  // 正常库存显示灰色
-                }
-            }
-        });
-    }
-
-
+    // 下单方法
     private void placeOrder() {
         // 检查是否选择了商品
         if (selectedProducts.values().stream().allMatch(q -> q == 0)) {
@@ -900,7 +746,7 @@ public class CoffeeShop {
         summary.append("已购商品:\n");
 
         double totalPrice = 0;
-        Map<Product, Integer> orderedItems = new LinkedHashMap<>(); // 保持插入顺序
+        Map<Product, Integer> orderedItems = new LinkedHashMap<>();
 
         // 1. 添加商品到订单并计算总价
         for (Map.Entry<Product, Integer> entry : selectedProducts.entrySet()) {
@@ -908,16 +754,16 @@ public class CoffeeShop {
                 Product product = entry.getKey();
                 int quantity = entry.getValue();
 
-                // 更新实际库存
+                // 更新库存
                 product.setStock(product.getStock() - quantity);
-                updateProductStockDisplay(product); // 更新UI显示
+                updateProductStockDisplay(product);
 
                 // 添加到订单
                 order.addItem(product, quantity);
                 product.incrementOrderCount(quantity);
                 orderedItems.put(product, quantity);
 
-                // 计算小计并累加总价
+                // 计算小计
                 double subtotal = product.getPrice() * quantity;
                 totalPrice += subtotal;
 
@@ -933,84 +779,25 @@ public class CoffeeShop {
         }
 
         // 2. 应用最佳折扣
-        double discountedPrice = totalPrice;
-        String appliedDiscount = "无可用折扣";
-
-        // 检查各种折扣条件
-        if (totalPrice >= 50) {
-            // 满50打8折
-            double discount50 = totalPrice * 0.8;
-            if (discount50 < discountedPrice) {
-                discountedPrice = discount50;
-                appliedDiscount = "满50元8折优惠";
-            }
-        } else if (totalPrice >= 30) {
-            // 满30减5
-            double discount30 = totalPrice - 5;
-            if (discount30 < discountedPrice) {
-                discountedPrice = discount30;
-                appliedDiscount = "满30元减5元";
-            }
-        } else if (totalPrice >= 20) {
-            // 满20减2
-            double discount20 = totalPrice - 2;
-            if (discount20 < discountedPrice) {
-                discountedPrice = discount20;
-                appliedDiscount = "满20元减2元";
-            }
-        }
-
-        // 检查套餐折扣(2食品+1饮料)
-        int foodCount = 0;
-        int beverageCount = 0;
-        for (Product p : order.getItems()) {
-            if ("Food".equals(p.getCategory())) foodCount++;
-            if ("Beverage".equals(p.getCategory())) beverageCount++;
-        }
-        if (foodCount >= 2 && beverageCount >= 1) {
-            double mealDeal = totalPrice * 0.8;
-            if (mealDeal < discountedPrice) {
-                discountedPrice = mealDeal;
-                appliedDiscount = "套餐优惠(8折)";
-            }
-        }
-
-        // 检查蛋糕优惠(买3送1)
-        int cakeCount = (int) order.getItems().stream()
-                .filter(p -> "Cake".equals(p.getName()))
-                .count();
-        if (cakeCount >= 3) {
-            double cakeDiscount = totalPrice - 4.0; // 减去一个蛋糕的价格
-            if (cakeDiscount < discountedPrice) {
-                discountedPrice = cakeDiscount;
-                appliedDiscount = "蛋糕买三送一";
-            }
-        }
+        DiscountCalculator.DiscountResult discount = discountCalculator.calculateBestDiscount(order);
+        double discountedPrice = totalPrice - discount.discountAmount;
 
         // 设置订单最终价格
         order.setTotalPrice(discountedPrice);
         orderManager.addOrder(order);
         orderManager.addToTotalRevenue(discountedPrice);
 
-        // 完成订单后
-        order.setTotalPrice(discountedPrice);
-        orderManager.addOrder(order);
-        orderManager.addToTotalRevenue(discountedPrice);
-
-        // 显示订单信息
-        displayOrderInGUI(order);
-
         // 3. 完善订单摘要
         summary.append("\n────────────────────────────────\n");
         summary.append(String.format("%-20s: ¥%7.2f\n", "商品总价", totalPrice));
-        summary.append(String.format("%-20s: %-10s\n", "应用优惠", appliedDiscount));
+        summary.append(String.format("%-20s: %-10s\n", "应用优惠", discount.description));
         summary.append(String.format("%-20s: ¥%7.2f\n", "折后价格", discountedPrice));
-        summary.append(String.format("%-20s: ¥%7.2f\n", "节省金额", totalPrice - discountedPrice));
+        summary.append(String.format("%-20s: ¥%7.2f\n", "节省金额", discount.discountAmount));
         summary.append("\n════════════════════════════════\n");
         summary.append("感谢您的惠顾，欢迎再次光临！\n");
 
         // 4. 更新UI显示
-        allOrderSummaries.insert(0, summary.toString() + "\n\n"); // 新订单添加到前面
+        allOrderSummaries.insert(0, summary.toString() + "\n\n");
         orderSummaryArea.setText(allOrderSummaries.toString());
         orderSummaryArea.setCaretPosition(0);
 
@@ -1033,6 +820,24 @@ public class CoffeeShop {
         discountedPriceLabel.setText("¥0.00");
     }
 
+    // 更新商品库存显示
+    private void updateProductStockDisplay(Product product) {
+        SwingUtilities.invokeLater(() -> {
+            JLabel stockLabel = stockLabels.get(product.getId());
+            if (stockLabel != null) {
+                stockLabel.setText("库存: " + product.getStock());
+
+                // 库存紧张时显示红色
+                if (product.getStock() < 3) {
+                    stockLabel.setForeground(Color.RED);
+                } else {
+                    stockLabel.setForeground(new Color(100, 100, 100));
+                }
+            }
+        });
+    }
+
+    // 主方法
     public static void main(String[] args) {
         CoffeeShop coffeeShop = new CoffeeShop();
         coffeeShop.frame.addWindowListener(new java.awt.event.WindowAdapter() {
@@ -1040,6 +845,7 @@ public class CoffeeShop {
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
                 coffeeShop.orderManager.generateReport(coffeeShop.menu);
 
+                // 保存订单到文件
                 try (BufferedWriter bw = new BufferedWriter(new FileWriter("orders.txt", false))) {
                     for (Order order : coffeeShop.orderManager.getOrders()) {
                         Map<Product, Integer> productQuantityMap = new HashMap<>();
@@ -1062,7 +868,7 @@ public class CoffeeShop {
                         }
                     }
                 } catch (IOException e) {
-                    System.out.println("Error writing to order.txt: " + e.getMessage());
+                    System.out.println("写入订单文件错误: " + e.getMessage());
                 }
             }
         });
