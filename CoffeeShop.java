@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.Timer;
+import java.util.stream.Collectors;
 
 // 自定义异常：库存不足异常
 class OutOfStockException extends Exception {
@@ -509,52 +510,63 @@ class CoffeeShopLogger {
 
 // 订单队列（线程安全）
 class OrderQueue {
-    private Queue<Order> queue;
+    private Queue<Order> preOrderQueue = new LinkedList<>(); // 高优先级队列（线上订单）
+    private Queue<Order> walkInQueue = new LinkedList<>();   // 低优先级队列（现场订单）
     private int maxSize;
-    private List<QueueObserver> observers = new ArrayList<>();  // 新增观察者列表
+    private List<QueueObserver> observers = new ArrayList<>();
 
     public OrderQueue(int maxSize) {
-        this.queue = new LinkedList<>();
         this.maxSize = maxSize;
     }
-
-    public synchronized void addOrder(Order order) throws InterruptedException {
-        while (queue.size() >= maxSize) {
-            wait();
-        }
-        queue.add(order);
-        notifyAll();
-        notifyObservers();  // 新增：添加订单时通知观察者
-        CoffeeShopLogger.getInstance().logEvent("订单已加入队列: " + order.getOrderId());
-    }
-
-    // 添加观察者方法
-    public void addObserver(QueueObserver observer) {
-        observers.add(observer);
-    }
-
-    public synchronized Order getNextOrder() throws InterruptedException {
-        while (queue.isEmpty()) {
-            wait();
-        }
-        Order order = queue.poll();
-        notifyAll();
-        return order;
-    }
-
-    private synchronized void notifyObservers() {
-        List<Order> snapshot = new ArrayList<>(queue);
+    private void notifyObservers() {
+        List<Order> snapshot = getQueueSnapshot();
         for (QueueObserver observer : observers) {
             observer.updateQueue(snapshot);
         }
     }
-
     public synchronized int getQueueSize() {
-        return queue.size();
+        return preOrderQueue.size() + walkInQueue.size();
+    }
+    public void addObserver(QueueObserver observer) {
+        observers.add(observer);
+    }
+    public synchronized void addOrder(Order order) throws InterruptedException {
+        while (getTotalSize() >= maxSize) {
+            wait();
+        }
+
+        // 根据订单类型添加到不同队列
+        if ("PRE_ORDER".equals(order.getOrderType())) {
+            preOrderQueue.add(order);
+        } else {
+            walkInQueue.add(order);
+        }
+
+        notifyAll();
+        notifyObservers();
+    }
+
+    public synchronized Order getNextOrder() throws InterruptedException {
+        while (getTotalSize() == 0) {
+            wait();
+        }
+
+        // 优先从线上订单队列获取
+        Order order = !preOrderQueue.isEmpty() ? preOrderQueue.poll() : walkInQueue.poll();
+        notifyAll();
+        notifyObservers();
+        return order;
+    }
+
+    private int getTotalSize() {
+        return preOrderQueue.size() + walkInQueue.size();
     }
 
     public synchronized List<Order> getQueueSnapshot() {
-        return new ArrayList<>(queue);
+        List<Order> snapshot = new ArrayList<>();
+        snapshot.addAll(preOrderQueue);  // 线上订单在前
+        snapshot.addAll(walkInQueue);   // 现场订单在后
+        return snapshot;
     }
 }
 
@@ -611,31 +623,29 @@ class CustomerGeneratorThread extends Thread {
 
     public CustomerGeneratorThread(OrderQueue orderQueue, List<Order> preOrders) {
         this.orderQueue = orderQueue;
-        this.preOrders = new ArrayList<>(preOrders); // 使用预加载订单
+        this.preOrders = new ArrayList<>(preOrders);
         this.running = true;
     }
 
     @Override
     public void run() {
-        CoffeeShopLogger.getInstance().logEvent("开始处理所有订单");
+        CoffeeShopLogger.getInstance().logEvent("开始处理预定订单");
+
+        // 先处理所有线上预定订单
         for (Order order : preOrders) {
             if (!running) break;
 
             try {
                 orderQueue.addOrder(order);
-                CoffeeShopLogger.getInstance().logEvent("订单已加入队列: " + order.getOrderId() +
-                        " (类型: " + order.getOrderType() + ")");
-
-                // 根据订单类型调整间隔时间
-                int delay = "PRE_ORDER".equals(order.getOrderType()) ? 1000 : 2000;
-                Thread.sleep(delay);
+                Thread.sleep(1000); // 控制订单生成速度
             } catch (InterruptedException e) {
-                CoffeeShopLogger.getInstance().logEvent("订单处理被中断");
                 break;
             }
         }
-        CoffeeShopLogger.getInstance().logEvent("所有订单已加入队列");
+
+        CoffeeShopLogger.getInstance().logEvent("所有预定订单已加入队列");
     }
+
 
     public void stopGenerating() {
         this.running = false;
@@ -792,7 +802,9 @@ public class CoffeeShop implements QueueObserver {
     private JButton stopSimulationButton;
     private JSlider speedSlider;
 
-
+    public boolean isSimulationRunning() {
+        return simulator != null;
+    }
 
     public CoffeeShop() {
         menu = new Menu();
@@ -813,7 +825,8 @@ public class CoffeeShop implements QueueObserver {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(900, 700);
         frame.setLayout(new BorderLayout());
-
+        placeOrderButton = new JButton("确认下单");
+        placeOrderButton.setEnabled(false); // 默认禁用，直到模拟开始
         // 渐变背景面板
         JPanel backgroundPanel = new JPanel() {
             @Override
@@ -1135,7 +1148,7 @@ public class CoffeeShop implements QueueObserver {
             }
         }
 
-        // 初始化模拟器 (队列大小100，2个服务员，服务时间根据滑块值)
+        // 初始化模拟器
         int serveTime = speedSlider.getValue();
         simulator = new CoffeeShopSimulator(
                 100,
@@ -1144,16 +1157,13 @@ public class CoffeeShop implements QueueObserver {
                 orderManager
         );
 
-        // 添加观察者（关键修改点）
-        simulator.addObserver(this);  // 添加模拟器观察者
-        if (simulator.getOrderQueue() != null) {
-            simulator.getOrderQueue().addObserver(this);  // 直接添加队列观察者
-        }
+        // 添加观察者
+        simulator.addObserver(this);
+        simulator.getOrderQueue().addObserver(this);
 
         simulator.startSimulation();
         CoffeeShopLogger.getInstance().logEvent("模拟启动，服务间隔: " + serveTime + "ms");
     }
-
     private void stopSimulation() {
         startSimulationButton.setEnabled(true);
         stopSimulationButton.setEnabled(false);
@@ -1175,30 +1185,52 @@ public class CoffeeShop implements QueueObserver {
     public void updateQueue(List<Order> orders) {
         SwingUtilities.invokeLater(() -> {
             StringBuilder queueText = new StringBuilder();
-            queueText.append("当前队列中有 ").append(orders.size()).append(" 个订单等待处理:\n\n");
+            queueText.append("当前队列: ").append(orders.size()).append(" 个订单\n\n");
 
-            for (Order order : orders) {
-                queueText.append("订单ID: ").append(order.getOrderId()).append("\n");
-                queueText.append("客户: ").append(order.getCustomerId()).append("\n");
-                queueText.append("类型: ").append(order.getOrderType()).append("\n");
-                queueText.append("商品数量: ").append(order.getItems().size()).append("\n");
+            // 分开显示线上和现场订单
+            queueText.append("=== 线上订单 (").append(
+                    orders.stream().filter(o -> "PRE_ORDER".equals(o.getOrderType())).count()
+            ).append(") ===\n");
 
-                // 显示订单中的商品列表
-                Map<String, Integer> productCounts = new HashMap<>();
-                for (Product product : order.getItems()) {
-                    productCounts.merge(product.getName(), 1, Integer::sum);
-                }
+            orders.stream()
+                    .filter(o -> "PRE_ORDER".equals(o.getOrderType()))
+                    .forEach(order -> appendOrderInfo(queueText, order));
 
-                productCounts.forEach((name, count) -> {
-                    queueText.append("  - ").append(name).append(" ×").append(count).append("\n");
-                });
+            queueText.append("\n=== 现场订单 (").append(
+                    orders.stream().filter(o -> "WALK_IN".equals(o.getOrderType())).count()
+            ).append(") ===\n");
 
-                queueText.append("----------------------------\n");
-            }
+            orders.stream()
+                    .filter(o -> "WALK_IN".equals(o.getOrderType()))
+                    .forEach(order -> appendOrderInfo(queueText, order));
 
             queueTextArea.setText(queueText.toString());
-            queueTextArea.setCaretPosition(0);  // 滚动到顶部
         });
+    }
+
+//    private void appendOrderInfo(StringBuilder sb, Order order) {
+//        sb.append("[").append(order.getOrderType()).append("] ");
+//        sb.append(order.getOrderId()).append(" - ");
+//        sb.append(order.getItems().size()).append(" 件商品\n");
+//
+//        // 显示商品详情
+//        order.getItems().stream()
+//                .collect(Collectors.groupingBy(Product::getName, Collectors.counting()))
+//                .forEach((name, count) -> sb.append("  ").append(name).append(" ×").append(count).append("\n"));
+//    }
+
+    private void appendOrderInfo(StringBuilder sb, Order order) {
+        sb.append("[").append(order.getOrderType()).append("] ");
+        sb.append(order.getOrderId()).append(" - ");
+        sb.append(order.getItems().size()).append(" 件商品\n");
+
+        // 使用传统循环替代lambda表达式
+        Map<String, Long> productCounts = order.getItems().stream()
+                .collect(Collectors.groupingBy(Product::getName, Collectors.counting()));
+
+        for (Map.Entry<String, Long> entry : productCounts.entrySet()) {
+            sb.append("  ").append(entry.getKey()).append(" ×").append(entry.getValue()).append("\n");
+        }
     }
 
     @Override
@@ -1264,7 +1296,14 @@ public class CoffeeShop implements QueueObserver {
             );
             return;
         }
-
+        // 检查模拟器是否已初始化
+        if (simulator == null) {
+            JOptionPane.showMessageDialog(frame,
+                    "模拟系统未启动，请先点击【开始模拟】",
+                    "系统未就绪",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         // 2. 创建新订单
         String orderId = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
@@ -1307,6 +1346,9 @@ public class CoffeeShop implements QueueObserver {
         }
 
         try {
+            // 将订单加入队列
+            simulator.getOrderQueue().addOrder(order);
+            orderManager.addOrder(order);
             // 4. 检查模拟器是否已启动
             if (simulator == null) {
                 throw new IllegalStateException("模拟系统未启动，请先点击【开始模拟】");
