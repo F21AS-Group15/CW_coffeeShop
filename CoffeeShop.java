@@ -6,6 +6,7 @@ import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
+import java.util.Timer;
 
 // 自定义异常：库存不足异常
 class OutOfStockException extends Exception {
@@ -64,14 +65,16 @@ class Order {
     private List<Product> items;
     private boolean isCompleted;
     private double totalPrice;
+    private String orderType; // 新增字段
 
-    public Order(String orderId, String timestamp, String customerId) {
+    public Order(String orderId, String timestamp, String customerId, String orderType) {
         this.orderId = orderId;
         this.timeStamp = timestamp;
         this.customerId = customerId;
         this.items = new ArrayList<>();
         this.isCompleted = false;
         this.totalPrice = 0;
+        this.orderType = orderType;
     }
 
     // 添加商品到订单
@@ -107,6 +110,7 @@ class Order {
     public String getOrderId() { return orderId; }
     public String getCustomerId() { return customerId; }
     public String getTimeStamp() { return timeStamp; }
+    public String getOrderType() { return orderType; }
 }
 
 // 菜单类
@@ -119,6 +123,7 @@ class Menu {
 
     // 获取所有商品
     public List<Product> getAllProducts() {
+        //TODO
         return new ArrayList<>(products.values());
     }
 
@@ -183,23 +188,93 @@ class OrderManager {
     private List<Order> orders;
     private double totalRevenue;
 
+    // 新增分类统计字段
+    private double preOrderRevenue;
+    private double walkInRevenue;
+    private Map<Product, Integer> preOrderProductCounts;
+    private Map<Product, Integer> walkInProductCounts;
+
     public OrderManager() {
         this.orders = new ArrayList<>();
         this.totalRevenue = 0;
+        this.preOrderRevenue = 0;
+        this.walkInRevenue = 0;
+        this.preOrderProductCounts = new HashMap<>();
+        this.walkInProductCounts = new HashMap<>();
+    }
+
+    public void addOrder(Order order) {
+        orders.add(order);
+
+        // 更新营收统计
+        double orderTotal = order.getTotalPrice();
+        totalRevenue += orderTotal;
+
+        if ("PRE_ORDER".equals(order.getOrderType())) {
+            preOrderRevenue += orderTotal;
+            updateProductCounts(order, preOrderProductCounts);
+        } else {
+            walkInRevenue += orderTotal;
+            updateProductCounts(order, walkInProductCounts);
+        }
     }
 
     // 生成销售报告
     public void generateReport(Menu menu) {
-        System.out.println("=== 销售报告 ===");
-        for (Product product : menu.getAllProducts()) {
-            System.out.println(product.getDetails() + " - 已订购 " + product.getOrderCount() + " 次");
-        }
-        System.out.println("总营收: $" + totalRevenue);
+        System.out.println("=== 每日销售报告 ===");
+        System.out.println("\n=== 预定订单 ===");
+        printCategoryReport(menu, getPreOrderProductCounts(), getPreOrderRevenue());
+
+        System.out.println("\n=== 现场订单 ===");
+        printCategoryReport(menu, getWalkInProductCounts(), getWalkInRevenue());
+
+        System.out.println("\n=== 全体订单汇总 ===");
+        System.out.println("总销售额: ¥" + String.format("%.2f", totalRevenue));
+        System.out.println("总订单数: " + orders.size());
+        System.out.println("其中:");
+        System.out.println("- 预定订单: " + preOrderProductCounts.values().stream().mapToInt(i->i).sum() + " 件商品");
+        System.out.println("- 现场订单: " + walkInProductCounts.values().stream().mapToInt(i->i).sum() + " 件商品");
     }
 
-    // 添加订单
-    public void addOrder(Order order) {
-        orders.add(order);
+    private void printCategoryReport(Menu menu, Map<Product, Integer> productCounts, double revenue) {
+        System.out.println("商品销售明细:");
+        productCounts.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .forEach(entry -> {
+                    Product p = entry.getKey();
+                    System.out.printf("%-20s ×%-4d ¥%-8.2f (小计: ¥%.2f)\n",
+                            p.getName(),
+                            entry.getValue(),
+                            p.getPrice(),
+                            p.getPrice() * entry.getValue());
+                });
+        System.out.println("----------------------------");
+        System.out.println("该类订单总销售额: ¥" + String.format("%.2f", revenue));
+        System.out.println("商品种类数: " + productCounts.size());
+    }
+
+    private void updateProductCounts(Order order, Map<Product, Integer> countsMap) {
+        for (Product product : order.getItems()) {
+            countsMap.put(product, countsMap.getOrDefault(product, 0) + 1);
+            product.incrementOrderCount(1); // 保留原有的总计数
+        }
+    }
+
+    // 新增分类统计方法
+    public Map<Product, Integer> getPreOrderProductCounts() {
+        return new HashMap<>(preOrderProductCounts);
+    }
+
+    public Map<Product, Integer> getWalkInProductCounts() {
+        return new HashMap<>(walkInProductCounts);
+    }
+
+    public double getPreOrderRevenue() {
+        return preOrderRevenue;
+    }
+
+    public double getWalkInRevenue() {
+        return walkInRevenue;
     }
 
     // 获取所有订单
@@ -226,8 +301,8 @@ class OrderManager {
                 lineNum++;
                 try {
                     String[] parts = line.split(",");
-                    if (parts.length != 5) {
-                        System.err.println("第 " + lineNum + " 行格式错误: 需要5个字段，实际得到 " + parts.length);
+                    if (parts.length != 6) {
+                        System.err.println("第 " + lineNum + " 行格式错误: 需要6个字段，实际得到 " + parts.length);
                         continue;
                     }
 
@@ -235,6 +310,8 @@ class OrderManager {
                     String timestamp = parts[1].trim();
                     String customerId = parts[2].trim();
                     String productId = parts[3].trim();
+                    String orderType = parts[5].trim();
+
                     int quantity = Integer.parseInt(parts[4].trim());
 
                     Product product = menu.getProductById(productId);
@@ -250,7 +327,7 @@ class OrderManager {
                         if (quantity == 0) continue;
                     }
 
-                    Order order = new Order(orderId, timestamp, customerId);
+                    Order order = new Order(orderId, timestamp, customerId,orderType);
                     order.addItem(product, quantity);
                     addOrder(order);
 
@@ -311,7 +388,8 @@ class DiscountCalculator {
         Order orderWithoutCakes = new Order(
                 originalOrder.getOrderId() + "-nocakes",
                 originalOrder.getTimeStamp(),
-                originalOrder.getCustomerId()
+                originalOrder.getCustomerId(),
+                originalOrder.getOrderType()
         );
 
         for (Product product : originalOrder.getItems()) {
@@ -398,9 +476,284 @@ class DiscountCalculator {
                 .count();
     }
 }
+// 新增的日志类（单例模式）
+class CoffeeShopLogger {
+    private static CoffeeShopLogger instance;
+    private StringBuilder log;
+
+    private CoffeeShopLogger() {
+        log = new StringBuilder();
+        log.append("=== 咖啡店模拟日志 ===\n");
+    }
+
+    public static synchronized CoffeeShopLogger getInstance() {
+        if (instance == null) {
+            instance = new CoffeeShopLogger();
+        }
+        return instance;
+    }
+
+    public synchronized void logEvent(String message) {
+        String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        String logEntry = "[" + timestamp + "] " + message + "\n";
+        log.append(logEntry);
+        System.out.print(logEntry);
+    }
+
+    public synchronized void saveToFile(String filePath) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            writer.write(log.toString());
+        }
+    }
+}
+
+// 订单队列（线程安全）
+class OrderQueue {
+    private Queue<Order> queue;
+    private int maxSize;
+
+    public OrderQueue(int maxSize) {
+        this.queue = new LinkedList<>();
+        this.maxSize = maxSize;
+    }
+
+    public synchronized void addOrder(Order order) throws InterruptedException {
+        while (queue.size() >= maxSize) {
+            wait();
+        }
+        queue.add(order);
+        notifyAll();
+        CoffeeShopLogger.getInstance().logEvent("订单已加入队列: " + order.getOrderId());
+    }
+
+    public synchronized Order getNextOrder() throws InterruptedException {
+        while (queue.isEmpty()) {
+            wait();
+        }
+        Order order = queue.poll();
+        notifyAll();
+        return order;
+    }
+
+    public synchronized int getQueueSize() {
+        return queue.size();
+    }
+
+    public synchronized List<Order> getQueueSnapshot() {
+        return new ArrayList<>(queue);
+    }
+}
+
+// 服务员线程
+class ServerThread extends Thread {
+    private OrderQueue orderQueue;
+    private Order currentOrder;
+    private boolean running;
+    private int serveTime; // 服务时间(毫秒)
+
+    public ServerThread(String name, OrderQueue orderQueue, int serveTime) {
+        super(name);
+        this.orderQueue = orderQueue;
+        this.serveTime = serveTime;
+        this.running = true;
+    }
+
+    @Override
+    public void run() {
+        CoffeeShopLogger.getInstance().logEvent(getName() + " 开始工作");
+        while (running || orderQueue.getQueueSize() > 0) {
+            try {
+                currentOrder = orderQueue.getNextOrder();
+                CoffeeShopLogger.getInstance().logEvent(getName() + " 开始处理订单: " + currentOrder.getOrderId());
+
+                // 模拟处理订单时间
+                Thread.sleep(serveTime);
+
+                CoffeeShopLogger.getInstance().logEvent(getName() + " 完成订单: " + currentOrder.getOrderId());
+                currentOrder = null;
+            } catch (InterruptedException e) {
+                CoffeeShopLogger.getInstance().logEvent(getName() + " 被中断");
+                break;
+            }
+        }
+        CoffeeShopLogger.getInstance().logEvent(getName() + " 结束工作");
+    }
+
+    public void stopWorking() {
+        this.running = false;
+        this.interrupt();
+    }
+
+    public Order getCurrentOrder() {
+        return currentOrder;
+    }
+}
+
+//顾客生成线程
+class CustomerGeneratorThread extends Thread {
+    private OrderQueue orderQueue;
+    private List<Order> preOrders;
+    private boolean running;
+
+    public CustomerGeneratorThread(OrderQueue orderQueue, List<Order> preOrders) {
+        this.orderQueue = orderQueue;
+        this.preOrders = new ArrayList<>(preOrders); // 使用预加载订单
+        this.running = true;
+    }
+
+    @Override
+    public void run() {
+        CoffeeShopLogger.getInstance().logEvent("开始处理所有订单");
+        for (Order order : preOrders) {
+            if (!running) break;
+
+            try {
+                orderQueue.addOrder(order);
+                CoffeeShopLogger.getInstance().logEvent("订单已加入队列: " + order.getOrderId() +
+                        " (类型: " + order.getOrderType() + ")");
+
+                // 根据订单类型调整间隔时间
+                int delay = "PRE_ORDER".equals(order.getOrderType()) ? 1000 : 2000;
+                Thread.sleep(delay);
+            } catch (InterruptedException e) {
+                CoffeeShopLogger.getInstance().logEvent("订单处理被中断");
+                break;
+            }
+        }
+        CoffeeShopLogger.getInstance().logEvent("所有订单已加入队列");
+    }
+
+    public void stopGenerating() {
+        this.running = false;
+        this.interrupt();
+    }
+}
+
+// 观察者接口
+interface QueueObserver {
+    void updateQueue(List<Order> orders);
+    void updateServers(List<ServerThread> servers);
+}
+
+// 咖啡店模拟控制器
+class CoffeeShopSimulator {
+    private OrderQueue orderQueue;
+    private List<ServerThread> servers;
+    private CustomerGeneratorThread customerGenerator;
+    private List<QueueObserver> observers;
+    private Timer observationTimer; //TODO:UTIL/SWING
+    private  OrderManager orderManager; // 新增OrderManager引用
+
+
+    // 新增模拟控制相关变量
+    private CoffeeShopSimulator simulator;
+    private JButton startSimulationButton;
+    private JButton stopSimulationButton;
+    private JSlider speedSlider;
+    private JTextArea queueTextArea;
+    private JTextArea serversTextArea;
+
+    public CoffeeShopSimulator(int queueSize,
+                               int serverCount,
+                               int serveTime,
+                               OrderManager orderManager) { // 新增参数
+        this.orderQueue = new OrderQueue(queueSize);
+        this.servers = new ArrayList<>();
+        this.observers = new ArrayList<>();
+        this.orderManager = orderManager; // 初始化orderManager
+
+        // 初始化服务员线程
+        for (int i = 1; i <= serverCount; i++) {
+            servers.add(new ServerThread("服务员 " + i, orderQueue, serveTime));
+        }
+
+        // 初始化顾客生成线程（使用orderManager中的订单）
+        this.customerGenerator = new CustomerGeneratorThread(
+                orderQueue,
+                new ArrayList<>(orderManager.getOrders()) // 使用订单副本
+        );
+
+        startObservation(1000); // 启动观察定时器
+    }
+
+    public OrderQueue getOrderQueue() {
+        return this.orderQueue;
+    }
+
+    public void startSimulation() {
+        // 1. 检查是否有有效订单
+        if (orderManager.getOrders().isEmpty()) {
+            CoffeeShopLogger.getInstance().logEvent("警告：没有预加载订单");
+        }
+
+        // 2. 启动所有服务员线程
+        servers.forEach(Thread::start);
+        CoffeeShopLogger.getInstance().logEvent("已启动 " + servers.size() + " 个服务员线程");
+
+        // 3. 启动顾客生成线程
+        customerGenerator.start();
+        CoffeeShopLogger.getInstance().logEvent("顾客生成线程已启动，开始处理 "
+                + orderManager.getOrders().size() + " 个预加载订单");
+    }
+
+    public void stopSimulation() {
+        // 停止生成新顾客
+        customerGenerator.stopGenerating();
+
+        // 等待队列处理完成
+        while (orderQueue.getQueueSize() > 0) {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // 停止所有服务员
+        servers.forEach(ServerThread::stopWorking);
+
+        // 停止观察
+        stopObservation();
+
+        // 保存日志
+        try {
+            CoffeeShopLogger.getInstance().saveToFile("coffee_shop_log.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void addObserver(QueueObserver observer) {
+        observers.add(observer);
+    }
+
+    private void startObservation(int interval) {
+        observationTimer = new Timer();
+        observationTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                notifyObservers();
+            }
+        }, 0, interval);
+    }
+
+    private void stopObservation() {
+        if (observationTimer != null) {
+            observationTimer.cancel();
+        }
+    }
+
+    private void notifyObservers() {
+        List<Order> queueSnapshot = orderQueue.getQueueSnapshot();
+        observers.forEach(observer -> {
+            observer.updateQueue(queueSnapshot);
+            observer.updateServers(servers);
+        });
+    }
+}
 
 // 咖啡店主类
-public class CoffeeShop {
+public class CoffeeShop implements QueueObserver {
     private List<JLabel> quantityLabels = new ArrayList<>();
     private Menu menu;
     private OrderManager orderManager;
@@ -415,16 +768,26 @@ public class CoffeeShop {
     private JLabel discountedPriceLabel;
     private JTextArea orderSummaryArea;
     private StringBuilder allOrderSummaries = new StringBuilder();
+    private CoffeeShopSimulator simulator;
+    private JPanel simulationPanel;
+    private JTextArea queueTextArea;
+    private JTextArea serversTextArea;
+    private JButton startSimulationButton;
+    private JButton stopSimulationButton;
+    private JSlider speedSlider;
+
+
 
     public CoffeeShop() {
         menu = new Menu();
-        orderManager = new OrderManager();
-        discountCalculator = new DiscountCalculator();  // 初始化折扣计算器
+        orderManager = new OrderManager();  // 初始化orderManager
+        discountCalculator = new DiscountCalculator();
         selectedProducts = new HashMap<>();
         allOrderSummaries = new StringBuilder();
 
+
         menu.loadFromFile("menu.txt");
-        orderManager.loadFromFile("orders.txt", menu);
+        orderManager.loadFromFile("pre_orders.txt", menu);  // 加载预定订单
         setupGUI();
     }
 
@@ -694,6 +1057,142 @@ public class CoffeeShop {
         backgroundPanel.add(placeOrderButton, BorderLayout.SOUTH);
 
         frame.setVisible(true);
+        addSimulationTab();
+    }
+
+    private void addSimulationTab() {
+        JPanel simulationPanel = new JPanel(new BorderLayout());
+        simulationPanel.setOpaque(false);
+
+        // 控制面板
+        JPanel controlPanel = new JPanel(new FlowLayout());
+        controlPanel.setOpaque(false);
+
+        // 初始化按钮
+        startSimulationButton = new JButton("开始模拟");
+        startSimulationButton.addActionListener(e -> startSimulation());
+
+        stopSimulationButton = new JButton("停止模拟");
+        stopSimulationButton.setEnabled(false);
+        stopSimulationButton.addActionListener(e -> stopSimulation());
+
+        // 速度调节滑块
+        speedSlider = new JSlider(500, 5000, 2000);
+        speedSlider.setMajorTickSpacing(1000);
+        speedSlider.setPaintTicks(true);
+        speedSlider.setPaintLabels(true);
+
+        controlPanel.add(startSimulationButton);
+        controlPanel.add(stopSimulationButton);
+        controlPanel.add(new JLabel("模拟速度:"));
+        controlPanel.add(speedSlider);
+
+        // 状态显示区域
+        queueTextArea = new JTextArea(10, 30);
+        queueTextArea.setEditable(false);
+        serversTextArea = new JTextArea(10, 30);
+        serversTextArea.setEditable(false);
+
+        JPanel displayPanel = new JPanel(new GridLayout(1, 2));
+        displayPanel.add(new JScrollPane(queueTextArea));
+        displayPanel.add(new JScrollPane(serversTextArea));
+
+        simulationPanel.add(controlPanel, BorderLayout.NORTH);
+        simulationPanel.add(displayPanel, BorderLayout.CENTER);
+
+        // 添加到主界面
+        ((JTabbedPane)frame.getContentPane().getComponent(1)).addTab("模拟控制", simulationPanel);
+    }
+
+    private void startSimulation() {
+        startSimulationButton.setEnabled(false);
+        stopSimulationButton.setEnabled(true);
+
+        // 确保 orderManager 已初始化
+        if (orderManager == null) {
+            orderManager = new OrderManager();
+            try {
+                orderManager.loadFromFile("pre_orders.txt", menu);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(frame, "无法加载订单: " + e.getMessage());
+                return;
+            }
+        }
+
+        // 从orderManager获取预加载订单
+//        List<Order> preOrders = new ArrayList<>(orderManager.getOrders());
+
+        // 初始化模拟器 (队列大小100，2个服务员，服务时间根据滑块值)
+        int serveTime = speedSlider.getValue();
+        simulator = new CoffeeShopSimulator(
+                100,
+                2,
+                serveTime,
+                orderManager  // 传入预加载订单
+        );
+
+        simulator.addObserver(this);
+        simulator.startSimulation();
+
+        CoffeeShopLogger.getInstance().logEvent("模拟启动，服务间隔: " + serveTime + "ms");
+    }
+
+    private void stopSimulation() {
+        startSimulationButton.setEnabled(true);
+        stopSimulationButton.setEnabled(false);
+
+        if (simulator != null) {
+            simulator.stopSimulation();
+            CoffeeShopLogger.getInstance().logEvent("模拟已手动停止");
+        }
+
+        // 保存当前状态
+        try {
+            CoffeeShopLogger.getInstance().saveToFile("coffee_shop_log.txt");
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "日志保存失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void updateQueue(List<Order> orders) {
+        SwingUtilities.invokeLater(() -> {
+            StringBuilder queueText = new StringBuilder();
+            queueText.append("当前队列中有 ").append(orders.size()).append(" 个订单等待处理:\n\n");
+
+            for (Order order : orders) {
+                queueText.append(order.getCustomerId())
+                        .append(" - ")
+                        .append(order.getItems().size())
+                        .append(" 个商品\n");
+            }
+
+            queueTextArea.setText(queueText.toString());
+        });
+    }
+
+    @Override
+    public void updateServers(List<ServerThread> servers) {
+        SwingUtilities.invokeLater(() -> {
+            StringBuilder serversText = new StringBuilder();
+            serversText.append("服务员状态:\n\n");
+
+            for (ServerThread server : servers) {
+                serversText.append(server.getName()).append(": ");
+                Order currentOrder = server.getCurrentOrder();
+                if (currentOrder != null) {
+                    serversText.append("正在处理订单 ")
+                            .append(currentOrder.getOrderId())
+                            .append(" (")
+                            .append(currentOrder.getItems().size())
+                            .append(" 个商品)\n");
+                } else {
+                    serversText.append("空闲中\n");
+                }
+            }
+
+            serversTextArea.setText(serversText.toString());
+        });
     }
 
 
@@ -705,7 +1204,7 @@ public class CoffeeShop {
                 .sum();
 
         // 创建临时订单用于折扣计算
-        Order tempOrder = new Order("temp", "temp", "temp");
+        Order tempOrder = new Order("temp", "temp", "temp","temp");
         selectedProducts.forEach((product, quantity) -> {
             if (quantity > 0) {
                 tempOrder.addItem(product, quantity);
@@ -721,103 +1220,122 @@ public class CoffeeShop {
         discountedPriceLabel.setText(String.format("¥%.2f", discountedPrice));
     }
 
-    // 下单方法
+    /**
+     * 处理用户下单逻辑，将订单加入处理队列
+     */
     private void placeOrder() {
-        // 检查是否选择了商品
+        // 1. 检查是否选择了商品
         if (selectedProducts.values().stream().allMatch(q -> q == 0)) {
-            JOptionPane.showMessageDialog(frame,
+            JOptionPane.showMessageDialog(
+                    frame,
                     "您还没有选择任何商品！\n请先添加商品到订单",
                     "订单错误",
-                    JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.WARNING_MESSAGE
+            );
             return;
         }
 
-        // 创建新订单
+        // 2. 创建新订单
         String orderId = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        Order order = new Order(orderId, timestamp, "CUST-001");
+        Order order = new Order(orderId, timestamp, "现场顾客", "WALK_IN");
 
-        // 准备订单摘要
-        StringBuilder summary = new StringBuilder();
-        summary.append("════════════ 订单详情 ════════════\n\n");
-        summary.append("订单编号: ").append(orderId).append("\n");
-        summary.append("下单时间: ").append(timestamp).append("\n");
-        summary.append("────────────────────────────────\n\n");
-        summary.append("已购商品:\n");
-
+        // 3. 添加选中商品到订单
         double totalPrice = 0;
-        Map<Product, Integer> orderedItems = new LinkedHashMap<>();
+        StringBuilder orderDetails = new StringBuilder();
+        orderDetails.append("════════════ 订单详情 ════════════\n\n");
+        orderDetails.append("订单编号: ").append(orderId).append("\n");
+        orderDetails.append("下单时间: ").append(timestamp).append("\n");
+        orderDetails.append("────────────────────────────────\n\n");
+        orderDetails.append("已购商品:\n");
 
-        // 1. 添加商品到订单并计算总价
         for (Map.Entry<Product, Integer> entry : selectedProducts.entrySet()) {
             if (entry.getValue() > 0) {
                 Product product = entry.getKey();
                 int quantity = entry.getValue();
 
-                // 更新库存
-                product.setStock(product.getStock() - quantity);
-                updateProductStockDisplay(product);
-
-                // 添加到订单
+                // 添加商品到订单
                 order.addItem(product, quantity);
-                product.incrementOrderCount(quantity);
-                orderedItems.put(product, quantity);
 
                 // 计算小计
                 double subtotal = product.getPrice() * quantity;
                 totalPrice += subtotal;
 
-                // 添加到订单摘要
-                summary.append(String.format(
+                // 添加到订单详情
+                orderDetails.append(String.format(
                         "▶ %-15s x%-2d @ ¥%-6.2f = ¥%-7.2f\n",
                         product.getName(),
                         quantity,
                         product.getPrice(),
                         subtotal
                 ));
+
+                // 更新库存
+                product.setStock(product.getStock() - quantity);
+                updateProductStockDisplay(product);
             }
         }
 
-        // 2. 应用最佳折扣
-        DiscountCalculator.DiscountResult discount = discountCalculator.calculateBestDiscount(order);
-        double discountedPrice = totalPrice - discount.discountAmount;
+        try {
+            // 4. 检查模拟器是否已启动
+            if (simulator == null) {
+                throw new IllegalStateException("模拟系统未启动，请先点击【开始模拟】");
+            }
 
-        // 设置订单最终价格
-        order.setTotalPrice(discountedPrice);
-        orderManager.addOrder(order);
-        orderManager.addToTotalRevenue(discountedPrice);
+            // 5. 应用折扣
+            DiscountCalculator.DiscountResult discount = discountCalculator.calculateBestDiscount(order);
+            double discountedPrice = totalPrice - discount.discountAmount;
+            order.setTotalPrice(discountedPrice);
 
-        // 3. 完善订单摘要
-        summary.append("\n────────────────────────────────\n");
-        summary.append(String.format("%-20s: ¥%7.2f\n", "商品总价", totalPrice));
-        summary.append(String.format("%-20s: %-10s\n", "应用优惠", discount.description));
-        summary.append(String.format("%-20s: ¥%7.2f\n", "折后价格", discountedPrice));
-        summary.append(String.format("%-20s: ¥%7.2f\n", "节省金额", discount.discountAmount));
-        summary.append("\n════════════════════════════════\n");
-        summary.append("感谢您的惠顾，欢迎再次光临！\n");
+            // 6. 将订单加入处理队列
+            simulator.getOrderQueue().addOrder(order);
+            orderManager.addOrder(order); // 添加到订单管理器
 
-        // 4. 更新UI显示
-        allOrderSummaries.insert(0, summary.toString() + "\n\n");
-        orderSummaryArea.setText(allOrderSummaries.toString());
-        orderSummaryArea.setCaretPosition(0);
+            // 7. 更新订单历史显示
+            orderDetails.append("\n────────────────────────────────\n");
+            orderDetails.append(String.format("%-20s: ¥%7.2f\n", "商品总价", totalPrice));
+            orderDetails.append(String.format("%-20s: %-10s\n", "应用优惠", discount.description));
+            orderDetails.append(String.format("%-20s: ¥%7.2f\n", "折后价格", discountedPrice));
+            orderDetails.append("\n════════════════════════════════\n");
 
-        // 5. 显示订单确认对话框
-        JOptionPane.showMessageDialog(
-                frame,
-                "订单提交成功！\n\n" +
-                        "订单编号: " + orderId + "\n" +
-                        "折后总价: ¥" + String.format("%.2f", discountedPrice),
-                "订单确认",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+            allOrderSummaries.insert(0, orderDetails.toString());
+            orderSummaryArea.setText(allOrderSummaries.toString());
+            orderSummaryArea.setCaretPosition(0);
 
-        // 6. 重置选择状态
-        selectedProducts.clear();
-        for (JLabel quantityLabel : quantityLabels) {
-            quantityLabel.setText("0");
+            // 8. 显示成功消息
+            JOptionPane.showMessageDialog(
+                    frame,
+                    "订单提交成功！\n\n" +
+                            "订单编号: " + orderId + "\n" +
+                            "当前队列位置: " + (simulator.getOrderQueue().getQueueSize()) + "\n" +
+                            "折后总价: ¥" + String.format("%.2f", discountedPrice),
+                    "订单确认",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+        } catch (InterruptedException e) {
+            JOptionPane.showMessageDialog(
+                    frame,
+                    "系统繁忙，订单未能及时处理\n请稍后再试",
+                    "系统繁忙",
+                    JOptionPane.WARNING_MESSAGE
+            );
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(
+                    frame,
+                    e.getMessage(),
+                    "系统未就绪",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        } finally {
+            // 9. 重置选择状态
+            selectedProducts.clear();
+            for (JLabel quantityLabel : quantityLabels) {
+                quantityLabel.setText("0");
+            }
+            totalPriceLabel.setText("¥0.00");
+            discountedPriceLabel.setText("¥0.00");
         }
-        totalPriceLabel.setText("¥0.00");
-        discountedPriceLabel.setText("¥0.00");
     }
 
     // 更新商品库存显示
@@ -839,38 +1357,48 @@ public class CoffeeShop {
 
     // 主方法
     public static void main(String[] args) {
-        CoffeeShop coffeeShop = new CoffeeShop();
-        coffeeShop.frame.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                coffeeShop.orderManager.generateReport(coffeeShop.menu);
+        SwingUtilities.invokeLater(() -> {
+            CoffeeShop coffeeShop = new CoffeeShop();
 
-                // 保存订单到文件
-                try (BufferedWriter bw = new BufferedWriter(new FileWriter("orders.txt", false))) {
-                    for (Order order : coffeeShop.orderManager.getOrders()) {
-                        Map<Product, Integer> productQuantityMap = new HashMap<>();
-                        for (Product product : order.getItems()) {
-                            productQuantityMap.put(product, productQuantityMap.getOrDefault(product, 0) + 1);
-                        }
+            // 添加窗口关闭事件
+            coffeeShop.frame.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                    // 保存订单
+                    try (BufferedWriter bw = new BufferedWriter(new FileWriter("orders.txt", false))) {
+                        for (Order order : coffeeShop.orderManager.getOrders()) {
+                            Map<Product, Integer> productQuantityMap = new HashMap<>();
+                            for (Product product : order.getItems()) {
+                                productQuantityMap.put(product, productQuantityMap.getOrDefault(product, 0) + 1);
+                            }
 
-                        for (Map.Entry<Product, Integer> entry : productQuantityMap.entrySet()) {
-                            Product product = entry.getKey();
-                            int quantity = entry.getValue();
+                            for (Map.Entry<Product, Integer> entry : productQuantityMap.entrySet()) {
+                                Product product = entry.getKey();
+                                int quantity = entry.getValue();
 
-                            if (quantity > 0) {
-                                bw.write(order.getOrderId() + "," +
-                                        order.getTimeStamp() + "," +
-                                        order.getCustomerId() + "," +
-                                        product.getId() + "," +
-                                        quantity);
-                                bw.newLine();
+                                if (quantity > 0) {
+                                    bw.write(order.getOrderId() + "," +
+                                            order.getTimeStamp() + "," +
+                                            order.getCustomerId() + "," +
+                                            product.getId() + "," +
+                                            quantity);
+                                    bw.newLine();
+                                }
                             }
                         }
+                    } catch (IOException e) {
+                        System.out.println("写入订单文件错误: " + e.getMessage());
                     }
-                } catch (IOException e) {
-                    System.out.println("写入订单文件错误: " + e.getMessage());
+
+                    // 生成报告
+                    coffeeShop.orderManager.generateReport(coffeeShop.menu);
+
+                    // 停止模拟（如果正在运行）
+                    if (coffeeShop.simulator != null) {
+                        coffeeShop.simulator.stopSimulation();
+                    }
                 }
-            }
+            });
         });
     }
 }
