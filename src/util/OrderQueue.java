@@ -52,6 +52,7 @@ public class OrderQueue {
                 return preOrderQueue.poll();
             }
             // 然后处理现场订单中最早的
+
             return walkInQueue.poll();
         }
     }
