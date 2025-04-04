@@ -28,8 +28,9 @@ public class CustomerGeneratorThread extends Thread {
 
             try {
                 orderQueue.addOrder(order);
-                Thread.sleep(1000); // 控制订单生成速度
+//                Thread.sleep(1000); // 控制订单生成速度
             } catch (InterruptedException e) {
+//                System.exit(0);
                 break;
             }
         }
