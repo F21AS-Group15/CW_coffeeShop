@@ -119,7 +119,7 @@ public class MainView extends JFrame implements QueueObserver {
         JScrollPane orderScroll = new JScrollPane(orderSummaryArea);
         orderScroll.setOpaque(false);
         orderScroll.getViewport().setOpaque(false);
-        tabbedPane.addTab("订单详情", orderScroll);
+        tabbedPane.addTab("现场订单", orderScroll);
     }
 
     private void initDiscountTab() {
@@ -138,7 +138,7 @@ public class MainView extends JFrame implements QueueObserver {
                 "1. 蛋糕特惠\n" +
                 "   - 购买3个或以上蛋糕，可免费获得1个\n\n" +
                 "2. 套餐优惠\n" +
-                "   - 2份食品 + 1份饮料可享8折优惠\n\n" +
+                "   - 2份食品(不包含蛋糕) + 1份饮料可享8折优惠\n\n" +
                 "3. 常规优惠\n" +
                 "   - 满¥20减¥2\n" +
                 "   - 满¥30减¥5\n" +
