@@ -18,6 +18,7 @@ public class OrderManager {
     private double walkInRevenue;
     private Map<Product, Integer> preOrderProductCounts;
     private Map<Product, Integer> walkInProductCounts;
+//    private volatile boolean shutdownRequested = false;
 
     public OrderManager() {
         this.orders = new ArrayList<>();
@@ -107,15 +108,15 @@ public class OrderManager {
         return orders;
     }
 
-    // 移除订单
-    public boolean removeOrder(String orderId) {
-        return orders.removeIf(o -> o.getOrderId().equals(orderId));
-    }
-
-    // 增加总营收
-    public void addToTotalRevenue(double amount) {
-        this.totalRevenue += amount;
-    }
+//    // 移除订单
+//    public boolean removeOrder(String orderId) {
+//        return orders.removeIf(o -> o.getOrderId().equals(orderId));
+//    }
+//
+//    // 增加总营收
+//    public void addToTotalRevenue(double amount) {
+//        this.totalRevenue += amount;
+//    }
 
     // 从文件加载订单
     public void loadFromFile(String filePath, Menu menu) {
@@ -176,4 +177,6 @@ public class OrderManager {
             System.err.println("加载订单文件错误: " + e.getMessage());
         }
     }
+
+
 }
