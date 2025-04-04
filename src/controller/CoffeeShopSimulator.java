@@ -139,6 +139,7 @@ public class CoffeeShopSimulator {
         return isRunning;
     }
 
+
     public OrderQueue getOrderQueue() {
         return orderQueue;
     }
@@ -146,41 +147,69 @@ public class CoffeeShopSimulator {
 
     // region 内部线程类
 
-    /**
-     * 顾客生成线程 - 负责将预定订单加入队列
-     */
-    private static class CustomerGeneratorThread implements Runnable {
-        private final OrderQueue queue;
-        private final List<Order> orders;
-        private volatile boolean running = true;
-
-        public CustomerGeneratorThread(OrderQueue queue, List<Order> orders) {
-            this.queue = queue;
-            this.orders = new ArrayList<>(orders); // 防御性复制
-        }
-
-        @Override
-        public void run() {
-            CoffeeShopLogger.getInstance().logEvent("开始处理预定订单");
-
-            for (Order order : orders) {
-                if (!running) break;
-
-                try {
-                    queue.addOrder(order);
-//                    Thread.sleep(500); // 控制订单生成速度
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-
-            CoffeeShopLogger.getInstance().logEvent("预定订单添加完成");
-        }
-
-        public void stopGenerating() {
-            running = false;
-        }
-    }
+//    /**
+//     * 顾客生成线程 - 负责将预定订单加入队列
+//     */
+//    private static class CustomerGeneratorThread implements Runnable {
+//        private final OrderQueue queue;
+//        private final List<Order> orders;
+//        private volatile boolean running = true;
+//
+//        public CustomerGeneratorThread(OrderQueue queue, List<Order> orders) {
+//            this.queue = queue;
+//            this.orders = new ArrayList<>(orders); // 防御性复制
+//        }
+//
+//        @Override
+//        public void run() {
+//            CoffeeShopLogger.getInstance().logEvent("开始处理预定订单");
+//
+//            for (Order order : orders) {
+//                if (!running) break;
+//
+//                try {
+//                    queue.addOrder(order);
+////                    Thread.sleep(500); // 控制订单生成速度
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                    break;
+//                }
+//            }
+//
+//            CoffeeShopLogger.getInstance().logEvent("预定订单添加完成");
+//        }
+//
+//        public void stopGenerating() {
+//            running = false;
+//        }
+//    }
     // endregion
+    public boolean areAllOrdersCompleted() {
+        // 防御性检查所有关键对象
+        if (orderQueue == null || servers == null || orderManager == null) {
+            return false; // 如果关键组件未初始化，认为未完成
+        }
+//        // 1. 检查队列中是否有待处理订单
+//        if (!orderQueue.isEmpty()) {
+//            return false;
+//        }
+//
+//        // 2. 检查所有服务员是否空闲
+//        for (ServerThread server : servers) {
+//            if (server.isProcessingOrder()) {
+//                return false;
+//            }
+//        }
+//
+//        // 3. 检查顾客生成器是否完成
+//        if (customerGenerator != null && !customerGenerator.isDone()) {
+//            return false;
+//        }
+
+        // 4. 检查OrderManager中是否有未完成的订单
+        return orderManager.getOrders().stream()
+                .allMatch(Order::isCompleted);
+    }
+
+
 }
