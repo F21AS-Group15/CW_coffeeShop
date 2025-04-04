@@ -16,6 +16,8 @@ import java.awt.event.ActionEvent;
 
 public class MainController {
     // region 组件声明
+    private Thread completionMonitorThread; // 订单完成监控线程
+    private volatile boolean isMonitoring = false; // 控制监控线程的运行状态
     public DiscountCalculator discountCalculator;
     public MainView view;
     public Menu menu;
@@ -34,6 +36,7 @@ public class MainController {
         loadInitialData();
 
 
+
         // 2. 初始化视图
         this.view = new MainView();
         setupEventHandlers();
@@ -46,15 +49,70 @@ public class MainController {
         if (orderManager == null) throw new IllegalStateException("orderManager未初始化");
         if (menu == null) throw new IllegalStateException("menu未初始化");
 
+        startCompletionMonitor(); // 启动订单完成监控
+
         System.out.println("[DEBUG] 初始化完成，组件状态正常");
     }
 
     // region 初始化方法
 
+    /**
+     * 启动订单完成监控线程
+     */
+    private void startCompletionMonitor() {
+        if (isMonitoring) {
+            return; // 避免重复启动
+        }
+
+        isMonitoring = true;
+        completionMonitorThread = new Thread(() -> {
+            while (isMonitoring) {
+                try {
+                    // 每1秒检查一次订单状态
+                    Thread.sleep(1000);
+
+//                    System.out.println(simulator.areAllOrdersCompleted());
+
+                    // 检查是否所有订单已完成
+                    if (simulator != null && simulator.areAllOrdersCompleted()) {
+                        // 在Swing事件线程中显示消息并退出
+                        //                            view.showMessage("模拟完成", "所有订单已处理完毕", JOptionPane.INFORMATION_MESSAGE);
+                        //                            System.exit(0); // 退出程序
+                        SwingUtilities.invokeLater(this::stopSimulation);
+                        break; // 退出监控循环
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+
+        completionMonitorThread.start(); // 启动监控线程
+    }
+
+//    /**
+//     * 停止监控线程（例如在程序退出时调用）
+//     */
+//    private void stopCompletionMonitor() {
+//        isMonitoring = false;
+//        if (completionMonitorThread != null) {
+//            completionMonitorThread.interrupt();
+//        }
+//    }
+
+//    // 在 stopSimulation() 中调用 stopCompletionMonitor()
+//    private void stopSimulation() {
+//        if (simulator != null) {
+//            simulator.stopSimulation();
+//            stopCompletionMonitor(); // 停止监控线程
+//        }
+//    }
+
     private void loadInitialData() {
         try {
-            menu.loadFromFile("D:\\PPSTAR\\github\\untitled\\src\\menu.txt");
-            orderManager.loadFromFile("D:\\PPSTAR\\github\\untitled\\src\\pre_orders.txt", menu);
+            menu.loadFromFile("src\\menu.txt");
+            orderManager.loadFromFile("src\\pre_orders.txt", menu);
         } catch (Exception e) {
             showErrorDialog("初始化错误", "加载数据失败: " + e.getMessage());
         }
@@ -148,11 +206,15 @@ public class MainController {
         order.setDiscountAmount(discount.discountAmount);
         order.setTotalPrice(order.calculateOriginalPrice() - discount.discountAmount);
 
-        view.appendOrderNote(String.format(
-                "应用折扣: %s (¥%.2f)",
-                discount.description,
-                discount.discountAmount
-        ));
+//        view.appendOrderNote(String.format(
+//                "应用折扣: %s (¥%.2f)",
+//                discount.description,
+//                discount.discountAmount
+//        ));
+
+        // 显示打折后的详细订单信息
+        view.appendOrderNote(order.getOrderDetails());
+
     }
     // endregion
 
@@ -206,10 +268,12 @@ public class MainController {
             CoffeeShopLogger.getInstance().logEvent("模拟停止");
 
             try {
-                CoffeeShopLogger.getInstance().saveToFile("coffee_shop_log.txt");
+                CoffeeShopLogger.getInstance().saveToFile("src\\coffee_shop_log.txt");
             } catch (Exception e) {
                 showErrorDialog("日志错误", "保存日志失败: " + e.getMessage());
             }
+
+            System.exit(0);
         }
     }
     // endregion
