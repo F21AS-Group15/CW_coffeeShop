@@ -1,9 +1,0 @@
-BVG100,Latte,A perfect blend of rich espresso and smooth steamed milk.,Beverage,5.0,99
-BVG101,Cappuccino,Rich espresso topped with frothy milk foam.,Beverage,4.5,3
-BVG102,Espresso,Pure and intense shot of concentrated coffee.,Beverage,3.0,99
-BVG103,Water Bottle,Pure drinking water.,Beverage,1.5,99
-BVG104,Tea,Carefully selected tea leaves.,Beverage,2.5,99
-FOOD200,Sandwich,Fresh ingredients layered in soft bread.,Food,7.0,99
-FOOD201,Cake,Soft and sweet.,Food,4.0,99
-FOOD202,Muffin,Soft and fluffy mini cakes with rich texture.,Food,3.5,99
-SNK301,Chips,Yummy and crispy.,Dessert,1.0,99
