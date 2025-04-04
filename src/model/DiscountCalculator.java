@@ -76,7 +76,7 @@ public class DiscountCalculator {
         return DiscountResult.NO_DISCOUNT;
     }
 
-    // 应用套餐折扣规则：2份食品+1份饮料打8折
+    // 应用套餐折扣规则：2份食品(不包含蛋糕)+1份饮料打8折
     private DiscountResult applyMealDealDiscount(Order order) {
         int foodCount = countItemsByCategory(order, "Food");
         int beverageCount = countItemsByCategory(order, "Beverage");
