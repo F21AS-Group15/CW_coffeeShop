@@ -6,14 +6,14 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-// 新增的日志类（单例模式）
+// Newly added Logger class
 public class CoffeeShopLogger {
     private static CoffeeShopLogger instance;
     private StringBuilder log;
 
     private CoffeeShopLogger() {
         log = new StringBuilder();
-        log.append("=== 咖啡店模拟日志 ===\n");
+        log.append("=== Coffee Shop Simulation Log ===\n");
     }
 
     public static synchronized CoffeeShopLogger getInstance() {
