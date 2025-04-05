@@ -1,0 +1,122 @@
+=== Coffee Shop Simulation Log ===
+[2025-04-05 09:11:32] Simulation started
+[2025-04-05 09:11:32] Server-1 has started working
+[2025-04-05 09:11:32] Server-2 has started working
+[2025-04-05 09:11:32] Start processing pre-orders
+[2025-04-05 09:11:32] All pre-orders have been added to the queue
+[2025-04-05 09:11:32] Server-2 starts processing order: Order ID: ORD-88ECDECB
+Customer: David
+Type: PRE_ORDER
+
+▸ Water Bottle    ×3  @ $1.50  
+
+──────────────
+Total Price: $4.50
+Discount Amount: -$0.00
+Amount Paid: $4.50
+
+
+[2025-04-05 09:11:32] Server-1 starts processing order: Order ID: ORD-495FBD11
+Customer: Emily
+Type: PRE_ORDER
+
+▸ Espresso        ×1  @ $3.00  
+▸ Sandwich        ×3  @ $7.00  
+▸ Water Bottle    ×3  @ $1.50  
+▸ Cake            ×5  @ $4.00  
+▸ Chips           ×1  @ $1.00  
+
+──────────────
+Total Price: $49.50
+Discount Amount: -$0.00
+Amount Paid: $49.50
+
+
+[2025-04-05 09:11:36] New order submitted: ORD-F8D5D49D Total: 2.0
+[2025-04-05 09:11:38] Server-2 completed order: ORD-88ECDECB
+[2025-04-05 09:11:38] Server-2 starts processing order: Order ID: ORD-9ABD9ED6
+Customer: Sophia
+Type: PRE_ORDER
+
+▸ Latte           ×5  @ $5.00  
+
+──────────────
+Total Price: $25.00
+Discount Amount: -$0.00
+Amount Paid: $25.00
+
+
+[2025-04-05 09:11:48] Server-2 completed order: ORD-9ABD9ED6
+[2025-04-05 09:11:48] Server-2 starts processing order: Order ID: ORD-3BA50D0E
+Customer: Amy
+Type: PRE_ORDER
+
+▸ Latte           ×1  @ $5.00  
+
+──────────────
+Total Price: $5.00
+Discount Amount: -$0.00
+Amount Paid: $5.00
+
+
+[2025-04-05 09:11:50] Server-2 completed order: ORD-3BA50D0E
+[2025-04-05 09:11:50] Server-2 starts processing order: Order ID: ORD-DECD8E4E
+Customer: Michael
+Type: PRE_ORDER
+
+▸ Latte           ×6  @ $5.00  
+
+──────────────
+Total Price: $30.00
+Discount Amount: -$0.00
+Amount Paid: $30.00
+
+
+[2025-04-05 09:11:58] Server-1 completed order: ORD-495FBD11
+[2025-04-05 09:11:58] Server-1 starts processing order: Order ID: ORD-F8D5D49D
+Customer: User
+Type: WALK_IN
+
+▸ Chips           ×2  @ $1.00  
+
+──────────────
+Total Price: $2.00
+Discount Amount: -$0.00
+Amount Paid: $2.00
+
+
+[2025-04-05 09:12:02] Server-1 completed order: ORD-F8D5D49D
+[2025-04-05 09:12:02] Server-2 completed order: ORD-DECD8E4E
+[2025-04-05 09:12:03] Simulation stopping...
+[2025-04-05 09:12:03] Server-1 has finished working
+[2025-04-05 09:12:03] Simulation stopped
+[2025-04-05 09:12:03] Server-2 has finished working
+[2025-04-05 09:12:03] Simulation stopped
+[2025-04-05 09:12:03] === Daily Sales Report ===
+
+=== Pre-order Sales ===
+Product Sales Details:
+Latte                ×12   $5.00     (Subtotal: $60.00)
+Water Bottle         ×6    $1.50     (Subtotal: $9.00)
+Cake                 ×5    $4.00     (Subtotal: $20.00)
+Sandwich             ×3    $7.00     (Subtotal: $21.00)
+Espresso             ×1    $3.00     (Subtotal: $3.00)
+Chips                ×1    $1.00     (Subtotal: $1.00)
+----------------------------
+Total sales for this order type: $114.00
+Number of product types: 6
+
+=== Walk-in Sales ===
+Product Sales Details:
+Chips                ×2    $1.00     (Subtotal: $2.00)
+----------------------------
+Total sales for this order type: $2.00
+Number of product types: 1
+
+=== Total Orders Summary ===
+Total Sales: $116.00
+Total Orders: 6
+Among them:
+- Pre-order Sales: 28 items
+- Walk-in Sales: 2 items
+
