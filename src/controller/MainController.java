@@ -13,73 +13,61 @@ import java.util.Map;
 import java.util.UUID;
 import java.awt.event.ActionEvent;
 
-
 public class MainController {
-    // region 组件声明
-    private Thread completionMonitorThread; // 订单完成监控线程
-    private volatile boolean isMonitoring = false; // 控制监控线程的运行状态
+    private volatile boolean isMonitoring = false; // Control the status of the monitoring thread
     public DiscountCalculator discountCalculator;
     public MainView view;
     public Menu menu;
     public OrderManager orderManager;
     public CoffeeShopSimulator simulator;
     public Map<Product, Integer> selectedProducts = new HashMap<>();
-    // endregion
     public OrderQueue orderQueue;
+
     public MainController() {
         this.discountCalculator = new DiscountCalculator();
-        // 1. 初始化模型
+        // 1. Initialize models
         this.menu = new Menu();
         this.orderManager = new OrderManager();
-        this.orderQueue = new OrderQueue(100); // 设置队列容量
-        this.simulator = new CoffeeShopSimulator(orderQueue, 2, 2000);
+        this.orderQueue = new OrderQueue(100); // Set queue capacity
+        this.simulator = new CoffeeShopSimulator(orderQueue, 2, 2000, orderManager); // Default order processing time: 2000ms
         loadInitialData();
 
-
-
-        // 2. 初始化视图
+        // 2. Initialize the view
         this.view = new MainView();
         setupEventHandlers();
         initProductDisplay();
 
-        // 3. 显示窗口
+        // 3. Show the window
         view.setVisible(true);
 
-        if (orderQueue == null) throw new IllegalStateException("orderQueue未初始化");
-        if (orderManager == null) throw new IllegalStateException("orderManager未初始化");
-        if (menu == null) throw new IllegalStateException("menu未初始化");
+        if (orderQueue == null) throw new IllegalStateException("orderQueue not initialized");
+        if (orderManager == null) throw new IllegalStateException("orderManager not initialized");
+        if (menu == null) throw new IllegalStateException("menu not initialized");
 
-        startCompletionMonitor(); // 启动订单完成监控
+        // 4. Start monitoring for order completion
+        startCompletionMonitor();
 
-        System.out.println("[DEBUG] 初始化完成，组件状态正常");
+        System.out.println("[DEBUG] Initialization completed, all components are ready");
     }
 
-    // region 初始化方法
-
-    /**
-     * 启动订单完成监控线程
-     */
+    // Start the order completion monitoring thread
     private void startCompletionMonitor() {
         if (isMonitoring) {
-            return; // 避免重复启动
+            return; // Avoid starting repeatedly
         }
 
         isMonitoring = true;
-        completionMonitorThread = new Thread(() -> {
+
+        Thread completionMonitorThread = new Thread(() -> {
             while (isMonitoring) {
                 try {
-                    // 每1秒检查一次订单状态
+                    // Check order status every second
                     Thread.sleep(1000);
 
-//                    System.out.println(simulator.areAllOrdersCompleted());
-
-                    // 检查是否所有订单已完成
+                    // Check if all orders are completed
                     if (simulator != null && simulator.areAllOrdersCompleted()) {
-                        // 在Swing事件线程中显示消息并退出
-                        //                            view.showMessage("模拟完成", "所有订单已处理完毕", JOptionPane.INFORMATION_MESSAGE);
-                        //                            System.exit(0); // 退出程序
                         SwingUtilities.invokeLater(this::stopSimulation);
-                        break; // 退出监控循环
+                        break; // Exit monitoring loop
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -88,41 +76,23 @@ public class MainController {
             }
         });
 
-        completionMonitorThread.start(); // 启动监控线程
+        completionMonitorThread.start(); // Start the monitoring thread
     }
-
-//    /**
-//     * 停止监控线程（例如在程序退出时调用）
-//     */
-//    private void stopCompletionMonitor() {
-//        isMonitoring = false;
-//        if (completionMonitorThread != null) {
-//            completionMonitorThread.interrupt();
-//        }
-//    }
-
-//    // 在 stopSimulation() 中调用 stopCompletionMonitor()
-//    private void stopSimulation() {
-//        if (simulator != null) {
-//            simulator.stopSimulation();
-//            stopCompletionMonitor(); // 停止监控线程
-//        }
-//    }
 
     private void loadInitialData() {
         try {
             menu.loadFromFile("src\\menu.txt");
             orderManager.loadFromFile("src\\pre_orders.txt", menu);
         } catch (Exception e) {
-            showErrorDialog("初始化错误", "加载数据失败: " + e.getMessage());
+            showErrorDialog("Initialization Error", "Failed to load data: " + e.getMessage());
         }
     }
 
     private void setupEventHandlers() {
-        // 订单按钮
+        // Order button
         view.setOrderButtonListener(this::handlePlaceOrder);
 
-        // 模拟控制按钮
+        // Simulation control buttons
         view.setStartSimulationListener(e -> startSimulation());
         view.setStopSimulationListener(e -> stopSimulation());
     }
@@ -135,38 +105,37 @@ public class MainController {
                     e -> handleRemoveProduct(product)
             );
 
-            // 初始化选中数量
+            // Initialize selected quantity
             selectedProducts.put(product, 0);
         });
     }
-    // endregion
 
-    // region 订单处理逻辑
+    // Order processing logic
     private void handlePlaceOrder(ActionEvent e) {
         if (selectedProducts.values().stream().allMatch(q -> q == 0)) {
-            showWarningDialog("订单错误", "请至少选择一件商品");
+            showWarningDialog("Order Error", "Please select at least one product");
             return;
         }
 
         if (simulator == null || !simulator.isRunning()) {
-            showWarningDialog("系统未就绪", "请先启动模拟系统");
+            showWarningDialog("System Not Ready", "Please start the simulation first");
             return;
         }
 
         try {
-            // 1. 创建新订单
+            // 1. Create new order
             Order newOrder = createNewOrder();
 
-            // 2. 添加商品到订单
+            // 2. Add products to order
             addItemsToOrder(newOrder);
 
-            // 3. 计算并应用折扣
+            // 3. Calculate and apply discounts
             applyDiscounts(newOrder);
 
-            // 4. 提交订单到系统
+            // 4. Submit order to system
             submitOrder(newOrder);
 
-            // 5. 更新UI状态
+            // 5. Update UI state
             resetOrderUI();
             showSuccessMessage(newOrder);
 
@@ -178,7 +147,7 @@ public class MainController {
     private Order createNewOrder() {
         String orderId = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        return new Order(orderId, timestamp, "现场顾客", "WALK_IN");
+        return new Order(orderId, timestamp, "User", "WALK_IN");
     }
 
     private void addItemsToOrder(Order order) throws OutOfStockException {
@@ -189,11 +158,11 @@ public class MainController {
             if (quantity > 0) {
                 if (quantity > product.getStock()) {
                     throw new OutOfStockException(
-                            product.getName() + "库存不足（剩余：" + product.getStock() + "）");
+                            product.getName() + " is out of stock (Remaining: " + product.getStock() + ")");
                 }
                 order.addItem(product, quantity);
                 product.reduceStock(quantity);
-                view.updateProductStock(product); // 改为传整个对象
+                view.updateProductStock(product);
             }
         }
     }
@@ -202,32 +171,23 @@ public class MainController {
         DiscountCalculator.DiscountResult discount =
                 new DiscountCalculator().calculateBestDiscount(order);
 
-        // 记录折扣金额
         order.setDiscountAmount(discount.discountAmount);
         order.setTotalPrice(order.calculateOriginalPrice() - discount.discountAmount);
 
-//        view.appendOrderNote(String.format(
-//                "应用折扣: %s (¥%.2f)",
-//                discount.description,
-//                discount.discountAmount
-//        ));
-
-        // 显示打折后的详细订单信息
+        // Display discounted order details
         view.appendOrderNote(order.getOrderDetails());
-
     }
-    // endregion
 
-    // region 模拟控制逻辑
+    // Simulation control logic
     private void startSimulation() {
         new Thread(() -> {
             try {
-                // 1. 验证组件
+                // 1. Validate components
                 if (orderQueue == null || orderManager == null) {
-                    throw new IllegalStateException("核心组件未初始化");
+                    throw new IllegalStateException("Core components are not initialized");
                 }
 
-                // 2. 创建模拟器
+                // 2. Create simulator
                 this.simulator = new CoffeeShopSimulator(
                         orderQueue,
                         2,
@@ -235,26 +195,24 @@ public class MainController {
                         orderManager
                 );
 
-                // 3. 设置观察者
+                // 3. Set observer
                 simulator.addObserver(view);
 
-                // 4. 启动模拟
+                // 4. Start simulation
                 simulator.startSimulation();
 
-                // 5. 更新UI（必须在EDT线程）
+                // 5. Update UI on EDT
                 SwingUtilities.invokeLater(() -> {
                     view.setSimulationControlsEnabled(true);
-                    view.showMessage("成功", "模拟已启动", JOptionPane.INFORMATION_MESSAGE);
+                    view.showMessage("Success", "Simulation started", JOptionPane.INFORMATION_MESSAGE);
                 });
 
             } catch (Exception e) {
-                // 打印完整错误
                 e.printStackTrace();
 
-                // 显示友好错误（EDT线程）
                 SwingUtilities.invokeLater(() ->
-                        showErrorDialog("启动失败",
-                                "原因: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName())
+                        showErrorDialog("Start Failed",
+                                "Reason: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName())
                         )
                 );
             }
@@ -265,32 +223,32 @@ public class MainController {
         if (simulator != null) {
             simulator.stopSimulation();
             view.setSimulationControlsEnabled(false);
-            CoffeeShopLogger.getInstance().logEvent("模拟停止");
+            CoffeeShopLogger.getInstance().logEvent("Simulation stopped");
+            CoffeeShopLogger.getInstance().logEvent(orderManager.generateReport());
 
             try {
                 CoffeeShopLogger.getInstance().saveToFile("src\\coffee_shop_log.txt");
             } catch (Exception e) {
-                showErrorDialog("日志错误", "保存日志失败: " + e.getMessage());
+                showErrorDialog("Log Error", "Failed to save log: " + e.getMessage());
             }
 
             System.exit(0);
         }
     }
-    // endregion
 
-    // region 商品选择处理
+    // Product selection handlers
     private void handleAddProduct(Product product) {
         try {
             int current = selectedProducts.get(product);
             if (current >= product.getStock()) {
-                throw new OutOfStockException("已达到库存上限");
+                throw new OutOfStockException("Stock limit reached");
             }
 
             selectedProducts.put(product, current + 1);
             updatePriceDisplay();
 
         } catch (OutOfStockException e) {
-            showWarningDialog("库存警告", e.getMessage());
+            showWarningDialog("Stock Warning", e.getMessage());
         }
     }
 
@@ -303,10 +261,10 @@ public class MainController {
     }
 
     private void updatePriceDisplay() {
-        // 创建临时订单用于计算
+        // Create a temporary order for calculation
         Order tempOrder = createTempOrder();
 
-        // 使用DiscountCalculator计算折扣
+        // Calculate discount
         DiscountCalculator.DiscountResult discountResult = calculateDiscount(tempOrder);
 
         double total = tempOrder.calculateOriginalPrice();
@@ -315,7 +273,7 @@ public class MainController {
         view.updatePriceDisplay(
                 total,
                 discountedPrice,
-                discountResult.description // 显示折扣描述
+                discountResult.description // Display discount description
         );
     }
 
@@ -328,24 +286,8 @@ public class MainController {
         });
         return tempOrder;
     }
-    private String getDiscountInfo(double total, double discount) {
-        if (discount <= 0) {
-            return "无折扣";
-        }
-        double discountRate = (discount / total) * 100;
-        return String.format("优惠: ¥%.2f (%.0f%%)", discount, discountRate);
-    }
-    // endregion
-
-    // region 辅助方法
-    private double calculateTotalPrice() {
-        return selectedProducts.entrySet().stream()
-                .mapToDouble(e -> e.getKey().getPrice() * e.getValue())
-                .sum();
-    }
 
     private DiscountCalculator.DiscountResult calculateDiscount(Order order) {
-        // 使用DiscountCalculator计算最佳折扣
         return discountCalculator.calculateBestDiscount(order);
     }
 
@@ -353,7 +295,7 @@ public class MainController {
         orderManager.addOrder(order);
         simulator.getOrderQueue().addOrder(order);
         CoffeeShopLogger.getInstance().logEvent(
-                "新订单提交: " + order.getOrderId() + " 总价: " + order.getTotalPrice());
+                "New order submitted: " + order.getOrderId() + " Total: " + order.getTotalPrice());
     }
 
     private void resetOrderUI() {
@@ -364,22 +306,21 @@ public class MainController {
 
     private void showSuccessMessage(Order order) {
         view.showMessage(
-                "订单提交成功",
-                String.format("订单号: %s\n总价: ¥%.2f", order.getOrderId(), order.getTotalPrice()),
+                "Order Submitted Successfully",
+                String.format("Order ID: %s\nTotal: ¥%.2f", order.getOrderId(), order.getTotalPrice()),
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void handleOrderException(Exception ex) {
-        CoffeeShopLogger.getInstance().logEvent("订单错误: " + ex.getMessage());
+        CoffeeShopLogger.getInstance().logEvent("Order Error: " + ex.getMessage());
         if (ex instanceof OutOfStockException) {
-            showWarningDialog("库存错误", ex.getMessage());
+            showWarningDialog("Stock Error", ex.getMessage());
         } else {
-            showErrorDialog("系统错误", ex.getMessage());
+            showErrorDialog("System Error", ex.getMessage());
         }
     }
-    // endregion
 
-    // region UI工具方法
+    // UI helper methods
     private void showWarningDialog(String title, String message) {
         view.showMessage(title, message, JOptionPane.WARNING_MESSAGE);
     }
@@ -387,5 +328,4 @@ public class MainController {
     private void showErrorDialog(String title, String message) {
         view.showMessage(title, message, JOptionPane.ERROR_MESSAGE);
     }
-    // endregion
 }
