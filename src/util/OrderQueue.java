@@ -1,34 +1,36 @@
 package util;
 
 import model.Order;
-import model.QueueObserver;
 
 import java.util.*;
 
+// Order queue class
 public class OrderQueue {
-    public PriorityQueue<Order> preOrderQueue;  // 预定订单优先队列
-    public PriorityQueue<Order> walkInQueue;    // 现场订单优先队列
+    public PriorityQueue<Order> preOrderQueue;  // Pre-order priority queue
+    public PriorityQueue<Order> walkInQueue;    // Walk-in order priority queue
     public int maxSize;
     public Object lock = new Object();
 
     public OrderQueue(int maxSize) {
         this.maxSize = maxSize;
-        // 按入队时间排序（最早的在队首）
+        // Sort by enqueue time (earliest at the front)
         Comparator<Order> timeComparator = Comparator.comparingLong(Order::getEnqueueTime);
         this.preOrderQueue = new PriorityQueue<>(timeComparator);
         this.walkInQueue = new PriorityQueue<>(timeComparator);
     }
+
     public synchronized int getQueueSize() {
         return preOrderQueue.size() + walkInQueue.size();
     }
-    // 添加订单时记录时间戳
+
+    // Add an order and record the timestamp
     public void addOrder(Order order) throws InterruptedException {
         synchronized (lock) {
-            while (getTotalSize() >= maxSize) {
+            while (getQueueSize() >= maxSize) {
                 lock.wait();
             }
 
-            order.setEnqueueTime(System.currentTimeMillis()); // 关键：记录入队时间
+            order.setEnqueueTime(System.currentTimeMillis()); // Record the enqueue time
 
             if ("PRE_ORDER".equals(order.getOrderType())) {
                 preOrderQueue.add(order);
@@ -40,28 +42,23 @@ public class OrderQueue {
         }
     }
 
-    // 严格按FIFO获取订单
+    // Get the next order by FIFO
     public Order getNextOrder() throws InterruptedException {
         synchronized (lock) {
-            while (getTotalSize() == 0) {
+            while (getQueueSize() == 0) {
                 lock.wait();
             }
 
-            // 优先处理预定订单中最早的
+            // Prioritize the earliest pre-order
             if (!preOrderQueue.isEmpty()) {
                 return preOrderQueue.poll();
             }
-            // 然后处理现场订单中最早的
-
+            // Then process the earliest walk-in order
             return walkInQueue.poll();
         }
     }
 
-    private int getTotalSize() {
-        return preOrderQueue.size() + walkInQueue.size();
-    }
-
-    // 获取队列快照（按入队时间排序）
+    // Get a snapshot of the queue (sorted by enqueue time)
     public List<Order> getQueueSnapshot() {
         synchronized (lock) {
             List<Order> allOrders = new ArrayList<>();
