@@ -1,6 +1,6 @@
 package model;
 
-// 商品类
+// Product class
 public class Product {
     private String id;
     private String name;
@@ -8,13 +8,13 @@ public class Product {
     private String category;
     private double price;
     private int stock;
-    private int orderCount; // 记录商品被订购的次数
+    private int orderCount; // Tracks the number of times the product has been ordered
 
     public Product(String id, String name, String description, String category, double price, int stock) {
-        if (id == null || id.isEmpty()) throw new IllegalArgumentException("产品ID不能为空");
-        if (name == null || name.isEmpty()) throw new IllegalArgumentException("产品名称不能为空");
-        if (price <= 0) throw new IllegalArgumentException("价格必须大于0");
-        if (stock < 0) throw new IllegalArgumentException("库存不能为负数");
+        if (id == null || id.isEmpty()) throw new IllegalArgumentException("Product ID cannot be empty");
+        if (name == null || name.isEmpty()) throw new IllegalArgumentException("Product name cannot be empty");
+        if (price <= 0) throw new IllegalArgumentException("Price must be greater than 0");
+        if (stock < 0) throw new IllegalArgumentException("Stock cannot be negative");
 
         this.id = id;
         this.name = name;
@@ -24,19 +24,15 @@ public class Product {
         this.stock = stock;
         this.orderCount = 0;
     }
-    // 添加库存减少方法
+
+    // Method to reduce stock
     public void reduceStock(int quantity) throws OutOfStockException {
         if (quantity > stock) {
-            throw new OutOfStockException("库存不足");
+            throw new OutOfStockException("Insufficient stock");
         }
         stock -= quantity;
     }
-    // 获取商品详情
-    public String getDetails() {
-        return name + ": " + description + " (" + category + ") - $" + price + " (Stock: " + stock + ")";
-    }
 
-    // Getter方法
     public double getPrice() {
         return price;
     }
@@ -49,20 +45,12 @@ public class Product {
         return id;
     }
 
-    public int getOrderCount() {
-        return orderCount;
-    }
-
     public void incrementOrderCount(int quantity) {
         this.orderCount += quantity;
     }
 
     public int getStock() {
         return stock;
-    }
-
-    public void setStock(int stock) {
-        this.stock = stock;
     }
 
     public String getName() {
