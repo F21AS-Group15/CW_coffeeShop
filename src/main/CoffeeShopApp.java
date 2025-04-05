@@ -4,32 +4,32 @@ import util.CoffeeShopLogger;
 import controller.MainController;
 import javax.swing.*;
 
-// Main.java
+// Main
 public class CoffeeShopApp {
     public static void main(String[] args) {
-        // 确保GUI在事件分发线程中创建
+        // Create GUI on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
             try {
-                // 初始化控制器（会自动创建视图和模型）
+                // Initialize controller (automatically creates view and model)
                 new MainController();
 
-                // 日志记录初始化
+                // Initialize logging
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     try {
-                        CoffeeShopLogger.getInstance().saveToFile("coffee_shop_log.txt");
+                        CoffeeShopLogger.getInstance().saveToFile("src//coffee_shop_log.txt");
                     } catch (Exception e) {
-                        System.err.println("保存日志失败: " + e.getMessage());
+                        System.err.println("Failed to save log: " + e.getMessage());
                     }
                 }));
 
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(
                         null,
-                        "系统初始化失败: " + e.getMessage(),
-                        "致命错误",
+                        "System initialization failed: " + e.getMessage(),
+                        "Fatal Error",
                         JOptionPane.ERROR_MESSAGE
                 );
-                System.exit(1);
+                System.exit(1); // Exit on exception
             }
         });
     }
