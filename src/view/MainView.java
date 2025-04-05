@@ -9,43 +9,44 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class MainView extends JFrame implements QueueObserver {
-    // 核心组件
+    // Core components
     private final JTabbedPane tabbedPane = new JTabbedPane();
     private final JPanel productPanel = new JPanel();
     private final JTextArea orderSummaryArea = new JTextArea();
     private final JTextArea queueTextArea = new JTextArea();
     private final JTextArea serversTextArea = new JTextArea();
-    private final JButton placeOrderButton = new JButton("确认下单");
-    private final JButton startSimulationButton = new JButton("开始模拟");
-    private final JButton stopSimulationButton = new JButton("停止模拟");
+    private final JButton placeOrderButton = new JButton("Place Order");
+    private final JButton startSimulationButton = new JButton("Start Simulation");
+    private final JButton stopSimulationButton = new JButton("Stop Simulation");
     private final JSlider speedSlider = new JSlider(500, 5000, 2000);
-    private final JLabel totalPriceLabel = new JLabel("¥0.00");
-    private final JLabel discountedPriceLabel = new JLabel("¥0.00");
-    private final JLabel discountInfoLabel = new JLabel("无折扣");
+    private final JLabel totalPriceLabel = new JLabel("$0.00");
+    private final JLabel discountedPriceLabel = new JLabel("$0.00");
+    private final JLabel discountInfoLabel = new JLabel("No Discount");
 
-    // 状态跟踪
+    // Status tracking
     private final Map<String, JLabel> stockLabels = new HashMap<>();
     private final Map<Product, JLabel> quantityLabels = new HashMap<>();
     private final StringBuilder allOrderSummaries = new StringBuilder();
+
 
     public MainView() {
         setupUI();
     }
 
     private void setupUI() {
-        // 1. 主窗口配置
-        setTitle("咖啡店订单管理系统");
+        // 1. Main window configuration
+        setTitle("Coffee Shop Order Management System");
         setSize(900, 700);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // 渐变背景面板
+        // Gradient background panel
         JPanel backgroundPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
-                Color color1 = new Color(255, 248, 240);  // 浅米色
-                Color color2 = new Color(220, 240, 255);  // 浅蓝色
+                Color color1 = new Color(255, 248, 240);  // Light beige
+                Color color2 = new Color(220, 240, 255);  // Light blue
                 GradientPaint gp = new GradientPaint(0, 0, color1, getWidth(), getHeight(), color2);
                 g2d.setPaint(gp);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -54,41 +55,40 @@ public class MainView extends JFrame implements QueueObserver {
         backgroundPanel.setLayout(new BorderLayout());
         setContentPane(backgroundPanel);
 
-        // 2. 顶部价格显示
+        // 2. Top price display
         add(createPricePanel(), BorderLayout.NORTH);
 
-        // 3. 主选项卡
+        // 3. Main tabs
         initProductTab();
         initOrderTab();
         initDiscountTab();
         initSimulationTab();
         backgroundPanel.add(tabbedPane, BorderLayout.CENTER);
 
-        // 4. 下单按钮
+        // 4. Place order button
         configureOrderButton();
         backgroundPanel.add(placeOrderButton, BorderLayout.SOUTH);
     }
-
 
     private JPanel createPricePanel() {
         JPanel panel = new JPanel(new GridLayout(1, 5, 10, 0));
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-        JLabel totalLabel = new JLabel("商品总价:");
+        JLabel totalLabel = new JLabel("Total Price:");
         totalLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
         panel.add(totalLabel);
 
         totalPriceLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
-        totalPriceLabel.setForeground(new Color(0, 100, 0));  // 深绿色
+        totalPriceLabel.setForeground(new Color(0, 100, 0));  // Dark green
         panel.add(totalPriceLabel);
 
-        JLabel discountLabel = new JLabel("折后价格:");
+        JLabel discountLabel = new JLabel("Discounted Price:");
         discountLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
         panel.add(discountLabel);
 
         discountedPriceLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
-        discountedPriceLabel.setForeground(new Color(200, 0, 0));  // 深红色
+        discountedPriceLabel.setForeground(new Color(200, 0, 0));  // Dark red
         panel.add(discountedPriceLabel);
 
         discountInfoLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
@@ -98,6 +98,7 @@ public class MainView extends JFrame implements QueueObserver {
         return panel;
     }
 
+
     private void initProductTab() {
         productPanel.setLayout(new GridLayout(0, 2, 15, 15));
         productPanel.setOpaque(false);
@@ -106,8 +107,9 @@ public class MainView extends JFrame implements QueueObserver {
         JScrollPane productScroll = new JScrollPane(productPanel);
         productScroll.setOpaque(false);
         productScroll.getViewport().setOpaque(false);
-        tabbedPane.addTab("商品菜单", productScroll);
+        tabbedPane.addTab("Product Menu", productScroll);
     }
+
 
     private void initOrderTab() {
         orderSummaryArea.setEditable(false);
@@ -119,8 +121,9 @@ public class MainView extends JFrame implements QueueObserver {
         JScrollPane orderScroll = new JScrollPane(orderSummaryArea);
         orderScroll.setOpaque(false);
         orderScroll.getViewport().setOpaque(false);
-        tabbedPane.addTab("现场订单", orderScroll);
+        tabbedPane.addTab("Live Orders", orderScroll);
     }
+
 
     private void initDiscountTab() {
         JPanel discountPanel = new JPanel(new BorderLayout());
@@ -134,16 +137,16 @@ public class MainView extends JFrame implements QueueObserver {
         discountTextArea.setLineWrap(true);
         discountTextArea.setWrapStyleWord(true);
 
-        String discountInfo = "当前优惠活动:\n\n" +
-                "1. 蛋糕特惠\n" +
-                "   - 购买3个或以上蛋糕，可免费获得1个\n\n" +
-                "2. 套餐优惠\n" +
-                "   - 2份食品(不包含蛋糕) + 1份饮料可享8折优惠\n\n" +
-                "3. 常规优惠\n" +
-                "   - 满¥20减¥2\n" +
-                "   - 满¥30减¥5\n" +
-                "   - 满¥50享8折优惠\n\n" +
-                "注：优惠不可叠加使用，系统将自动应用最优折扣";
+        String discountInfo = "Current Discount Promotions:\n\n" +
+                "1. Cake Special\n" +
+                "   - Buy 3 or more cakes, get 1 free\n\n" +
+                "2. Meal Set Discount\n" +
+                "   - 2 food items (excluding cakes) + 1 drink, enjoy 20% off\n\n" +
+                "3. Regular Discounts\n" +
+                "   - $2 off for orders over $20\n" +
+                "   - $5 off for orders over $30\n" +
+                "   - 20% off for orders over $50\n\n" +
+                "Note: Discounts cannot be combined. The system will automatically apply the best discount.";
 
         discountTextArea.setText(discountInfo);
 
@@ -152,33 +155,34 @@ public class MainView extends JFrame implements QueueObserver {
         discountScroll.getViewport().setOpaque(false);
         discountPanel.add(discountScroll, BorderLayout.CENTER);
 
-        tabbedPane.addTab("优惠信息", discountPanel);
+        tabbedPane.addTab("Discount Information", discountPanel);
     }
+
 
     private void initSimulationTab() {
         JPanel simulationPanel = new JPanel(new BorderLayout());
         simulationPanel.setOpaque(false);
 
-        // 控制面板
+        // Control Panel
         JPanel controlPanel = new JPanel(new FlowLayout());
         controlPanel.setOpaque(false);
 
-        // 初始化按钮
+        // Initialize buttons
         startSimulationButton.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
         stopSimulationButton.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
         stopSimulationButton.setEnabled(false);
 
-        // 速度调节滑块
+        // Speed adjustment slider
         speedSlider.setMajorTickSpacing(1000);
         speedSlider.setPaintTicks(true);
         speedSlider.setPaintLabels(true);
 
         controlPanel.add(startSimulationButton);
         controlPanel.add(stopSimulationButton);
-        controlPanel.add(new JLabel("模拟速度:"));
+        controlPanel.add(new JLabel("Wait Time for Servers (Please adjust before starting simulation):"));
         controlPanel.add(speedSlider);
 
-        // 状态显示区域
+        // Status display area
         queueTextArea.setEditable(false);
         queueTextArea.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
         serversTextArea.setEditable(false);
@@ -191,8 +195,9 @@ public class MainView extends JFrame implements QueueObserver {
         simulationPanel.add(controlPanel, BorderLayout.NORTH);
         simulationPanel.add(displayPanel, BorderLayout.CENTER);
 
-        tabbedPane.addTab("模拟控制", simulationPanel);
+        tabbedPane.addTab("Simulation Control", simulationPanel);
     }
+
 
     private void configureOrderButton() {
         placeOrderButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
@@ -202,104 +207,8 @@ public class MainView extends JFrame implements QueueObserver {
         placeOrderButton.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
     }
 
-//    public void addProductCard(Product product, ActionListener addAction, ActionListener removeAction) {
-//        // 创建商品卡片面板
-//        JPanel cardPanel = new JPanel(new BorderLayout()) {
-//            @Override
-//            protected void paintComponent(Graphics g) {
-//                super.paintComponent(g);
-//                Graphics2D g2d = (Graphics2D) g;
-//                g2d.setColor(new Color(255, 255, 255, 220));
-//                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
-//                g2d.setColor(new Color(200, 200, 200, 100));
-//                g2d.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 15, 15);
-//            }
-//        };
-//        cardPanel.setOpaque(false);
-//        cardPanel.setPreferredSize(new Dimension(380, 180));
-//
-//        // 商品信息面板
-//        JPanel infoPanel = new JPanel();
-//        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-//        infoPanel.setOpaque(false);
-//        infoPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-//
-//        // 商品名称
-//        JLabel nameLabel = new JLabel("<html><b><font size=+1>" + product.getName() + "</font></b></html>");
-//        nameLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-//        infoPanel.add(nameLabel);
-//        infoPanel.add(Box.createVerticalStrut(5));
-//
-//        // 商品描述
-//        JTextArea descriptionArea = new JTextArea(product.getDescription());
-//        descriptionArea.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
-//        descriptionArea.setLineWrap(true);
-//        descriptionArea.setWrapStyleWord(true);
-//        descriptionArea.setEditable(false);
-//        descriptionArea.setOpaque(false);
-//        descriptionArea.setMaximumSize(new Dimension(350, 40));
-//        infoPanel.add(descriptionArea);
-//        infoPanel.add(Box.createVerticalStrut(5));
-//
-//        // 商品分类和价格
-//        JPanel detailPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-//        detailPanel.setOpaque(false);
-//
-//        JLabel categoryLabel = new JLabel("分类: " + product.getCategory());
-//        categoryLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
-//        detailPanel.add(categoryLabel);
-//
-//        JLabel priceLabel = new JLabel("价格: ¥" + product.getPrice());
-//        priceLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 13));
-//        priceLabel.setForeground(new Color(0, 100, 0));
-//        detailPanel.add(priceLabel);
-//
-//        infoPanel.add(detailPanel);
-//
-//        // 库存信息
-//        JLabel stockLabel = new JLabel("库存: " + product.getStock());
-//        stockLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
-//        stockLabel.setForeground(new Color(100, 100, 100));
-//        infoPanel.add(stockLabel);
-//        stockLabels.put(product.getId(), stockLabel);
-//
-//        // 数量选择面板
-//        JPanel quantityPanel = new JPanel();
-//        quantityPanel.setOpaque(false);
-//        quantityPanel.setLayout(new BoxLayout(quantityPanel, BoxLayout.X_AXIS));
-//        quantityPanel.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
-//
-//        JButton minusButton = new JButton("-");
-//        minusButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-//        minusButton.setPreferredSize(new Dimension(30, 30));
-//        minusButton.setBackground(new Color(255, 150, 150));
-//        minusButton.setForeground(Color.WHITE);
-//        minusButton.setFocusPainted(false);
-//        minusButton.addActionListener(removeAction);
-//
-//        JLabel quantityLabel = new JLabel("0");
-//        quantityLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-//        quantityLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
-//        quantityLabels.put(product, quantityLabel);
-//
-//        JButton plusButton = new JButton("+");
-//        plusButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-//        plusButton.setPreferredSize(new Dimension(30, 30));
-//        plusButton.setBackground(new Color(150, 200, 150));
-//        plusButton.setForeground(Color.WHITE);
-//        plusButton.setFocusPainted(false);
-//        plusButton.addActionListener(addAction);
-//
-//        quantityPanel.add(minusButton);
-//        quantityPanel.add(quantityLabel);
-//        quantityPanel.add(plusButton);
-//        infoPanel.add(quantityPanel);
-//
-//        cardPanel.add(infoPanel, BorderLayout.CENTER);
-//        productPanel.add(cardPanel);
-//    }
     public void addProductCard(Product product, ActionListener addAction, ActionListener removeAction) {
-        // 创建商品卡片面板（保持不变）
+        // Create product card panel
         JPanel cardPanel = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -314,21 +223,18 @@ public class MainView extends JFrame implements QueueObserver {
         cardPanel.setOpaque(false);
         cardPanel.setPreferredSize(new Dimension(380, 180));
 
-        // 商品信息面板（保持不变）
+        // Product info panel
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
         infoPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
-        // 商品名称、描述、分类和价格（保持不变）
-        // ...（原有代码保持不变）
-        // 商品名称
         JLabel nameLabel = new JLabel("<html><b><font size=+1>" + product.getName() + "</font></b></html>");
         nameLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
         infoPanel.add(nameLabel);
         infoPanel.add(Box.createVerticalStrut(5));
 
-        // 商品描述
+        // Product description
         JTextArea descriptionArea = new JTextArea(product.getDescription());
         descriptionArea.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
         descriptionArea.setLineWrap(true);
@@ -339,35 +245,35 @@ public class MainView extends JFrame implements QueueObserver {
         infoPanel.add(descriptionArea);
         infoPanel.add(Box.createVerticalStrut(5));
 
-        // 商品分类和价格
+        // Product category and price
         JPanel detailPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         detailPanel.setOpaque(false);
 
-        JLabel categoryLabel = new JLabel("分类: " + product.getCategory());
+        JLabel categoryLabel = new JLabel("Category: " + product.getCategory());
         categoryLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
         detailPanel.add(categoryLabel);
 
-        JLabel priceLabel = new JLabel("价格: ¥" + product.getPrice());
+        JLabel priceLabel = new JLabel("Price: $" + product.getPrice());
         priceLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 13));
         priceLabel.setForeground(new Color(0, 100, 0));
         detailPanel.add(priceLabel);
 
         infoPanel.add(detailPanel);
 
-        // 库存信息（保持不变）
-        JLabel stockLabel = new JLabel("库存: " + product.getStock());
+        // Stock info
+        JLabel stockLabel = new JLabel("Stock: " + product.getStock());
         stockLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
         stockLabel.setForeground(new Color(100, 100, 100));
         infoPanel.add(stockLabel);
         stockLabels.put(product.getId(), stockLabel);
 
-        // 数量选择面板
+        // Quantity selection panel
         JPanel quantityPanel = new JPanel();
         quantityPanel.setOpaque(false);
         quantityPanel.setLayout(new BoxLayout(quantityPanel, BoxLayout.X_AXIS));
         quantityPanel.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
 
-        // 减号按钮
+        // Minus button
         JButton minusButton = new JButton("-");
         minusButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
         minusButton.setPreferredSize(new Dimension(30, 30));
@@ -378,19 +284,20 @@ public class MainView extends JFrame implements QueueObserver {
             int currentQty = Integer.parseInt(quantityLabels.get(product).getText());
             if (currentQty > 0) {
                 quantityLabels.get(product).setText(String.valueOf(currentQty - 1));
-                removeAction.actionPerformed(e); // 通知控制器数量减少
+                removeAction.actionPerformed(e); // Notify controller about quantity decrease
             } else {
-                showMessage("操作无效", "购买数量不能小于零", JOptionPane.WARNING_MESSAGE);
+                showMessage("Invalid Operation", "Purchase quantity cannot be less than 0", JOptionPane.WARNING_MESSAGE);
             }
         });
 
-        // 数量显示标签
+
+        // Quantity display label
         JLabel quantityLabel = new JLabel("0");
         quantityLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
         quantityLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
         quantityLabels.put(product, quantityLabel);
 
-        // 加号按钮
+        // Plus button
         JButton plusButton = new JButton("+");
         plusButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
         plusButton.setPreferredSize(new Dimension(30, 30));
@@ -401,15 +308,16 @@ public class MainView extends JFrame implements QueueObserver {
             int currentQty = Integer.parseInt(quantityLabels.get(product).getText());
             if (currentQty < product.getStock()) {
                 quantityLabels.get(product).setText(String.valueOf(currentQty + 1));
-                addAction.actionPerformed(e); // 通知控制器数量增加
+                addAction.actionPerformed(e); // Notify controller about quantity increase
             } else {
-                showMessage("库存不足",
-                        "库存不足！\n" + product.getName() +
-                                " 剩余: " + product.getStock() +
-                                "\n最大可添加数量: " + product.getStock(),
+                showMessage("Insufficient Stock",
+                        "Not enough stock!\n" + product.getName() +
+                                " Remaining: " + product.getStock() +
+                                "\nMaximum addable quantity: " + product.getStock(),
                         JOptionPane.WARNING_MESSAGE);
             }
         });
+
 
         quantityPanel.add(minusButton);
         quantityPanel.add(quantityLabel);
@@ -422,8 +330,8 @@ public class MainView extends JFrame implements QueueObserver {
 
     public void updatePriceDisplay(double totalPrice, double discountedPrice, String discountInfo) {
         SwingUtilities.invokeLater(() -> {
-            totalPriceLabel.setText(String.format("¥%.2f", totalPrice));
-            discountedPriceLabel.setText(String.format("¥%.2f", discountedPrice));
+            totalPriceLabel.setText(String.format("$%.2f", totalPrice));
+            discountedPriceLabel.setText(String.format("$%.2f", discountedPrice));
             discountInfoLabel.setText(discountInfo);
         });
     }
@@ -432,14 +340,14 @@ public class MainView extends JFrame implements QueueObserver {
         SwingUtilities.invokeLater(() -> {
             JLabel label = stockLabels.get(product.getId());
             if (label != null) {
-                label.setText("库存: " + product.getStock());
+                label.setText("Stock: " + product.getStock());
                 if (product.getStock() < 3) {
                     label.setForeground(Color.RED);
                 } else {
                     label.setForeground(new Color(100, 100, 100));
                 }
 
-                // 更新数量标签
+                // Update quantity label
                 JLabel qtyLabel = quantityLabels.get(product);
                 if (qtyLabel != null) {
                     int currentQty = Integer.parseInt(qtyLabel.getText());
@@ -465,26 +373,16 @@ public class MainView extends JFrame implements QueueObserver {
         });
     }
 
-
     public void resetOrderSummariesSelections() {
-        totalPriceLabel.setText("¥0.00");
-        discountedPriceLabel.setText("¥0.00");
-        discountInfoLabel.setText("无折扣");
+        totalPriceLabel.setText("$0.00");
+        discountedPriceLabel.setText("$0.00");
+        discountInfoLabel.setText("No discount");
     }
 
     public void showMessage(String title, String message, int messageType) {
         SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this, message, title, messageType)
         );
-    }
-
-    public Map<Product, Integer> getSelectedProducts() {
-        Map<Product, Integer> selections = new HashMap<>();
-        quantityLabels.forEach((product, label) -> {
-            int qty = Integer.parseInt(label.getText());
-            if (qty > 0) selections.put(product, qty);
-        });
-        return selections;
     }
 
     public void setOrderButtonListener(ActionListener listener) {
@@ -512,24 +410,24 @@ public class MainView extends JFrame implements QueueObserver {
     @Override
     public void updateQueue(List<Order> orders) {
         SwingUtilities.invokeLater(() -> {
-            // 按订单ID分组，合并相同订单的显示
+            // Group orders by order ID, merging the display of the same orders
             Map<String, List<Order>> groupedOrders = orders.stream()
                     .collect(Collectors.groupingBy(Order::getOrderId));
 
             StringBuilder queueText = new StringBuilder();
-            queueText.append("=== 当前队列状态 ===\n");
-            queueText.append("当前队列中有");
+            queueText.append("=== Current Queue Status ===\n");
+            queueText.append("There are ");
             queueText.append(orders.size());
-            queueText.append("个订单待处理\n");
+            queueText.append(" orders waiting to be processed\n");
 
-            // 预定订单
-            queueText.append("=== 预定订单 ===\n");
+            // Reserved orders
+            queueText.append("=== Reserved Orders ===\n");
             groupedOrders.values().stream()
                     .filter(list -> "PRE_ORDER".equals(list.get(0).getOrderType()))
                     .forEach(orderList -> appendMergedOrder(queueText, orderList));
 
-            // 现场订单
-            queueText.append("\n=== 现场订单 ===\n");
+            // Walk-in orders
+            queueText.append("\n=== Walk-in Orders ===\n");
             groupedOrders.values().stream()
                     .filter(list -> "WALK_IN".equals(list.get(0).getOrderType()))
                     .forEach(orderList -> appendMergedOrder(queueText, orderList));
@@ -542,17 +440,17 @@ public class MainView extends JFrame implements QueueObserver {
         if (orders.isEmpty()) return;
 
         Order firstOrder = orders.get(0);
-        sb.append("订单ID: ").append(firstOrder.getOrderId()).append("\n");
-        sb.append("客户: ").append(firstOrder.getCustomerId()).append("\n");
-        sb.append("类型: ").append(firstOrder.getOrderType()).append("\n");
+        sb.append("Order ID: ").append(firstOrder.getOrderId()).append("\n");
+        sb.append("Customer: ").append(firstOrder.getCustomerName()).append("\n");
+        sb.append("Type: ").append(firstOrder.getOrderType()).append("\n");
 
-        // 合并所有商品
+        // Merge all products
         Map<Product, Long> allProducts = orders.stream()
                 .flatMap(order -> order.getItems().stream())
                 .collect(Collectors.groupingBy(p -> p, Collectors.counting()));
 
         allProducts.forEach((product, count) -> {
-            sb.append(String.format("  %-15s ×%-2d @ ¥%-5.2f\n",
+            sb.append(String.format("  %-15s ×%-2d @ $%-5.2f\n",
                     product.getName(), count, product.getPrice()));
         });
 
@@ -560,31 +458,27 @@ public class MainView extends JFrame implements QueueObserver {
                 .mapToDouble(Order::getTotalPrice)
                 .sum();
 
-        sb.append(String.format("总价: ¥%.2f\n\n", totalPrice));
+        sb.append(String.format("Total Price: $%.2f\n\n", totalPrice));
     }
 
     @Override
     public void updateServers(List<ServerThread> servers) {
         SwingUtilities.invokeLater(() -> {
             StringBuilder sb = new StringBuilder();
-            sb.append("服务员状态:\n\n");
+            sb.append("Server Status:\n\n");
 
             for (ServerThread server : servers) {
                 sb.append(server.getName()).append(": ");
                 Order currentOrder = server.getCurrentOrder();
                 if (currentOrder != null) {
                     sb.append(server.getCurrentOrderDetails());
-//                    sb.append("正在处理订单 ")
-//                            .append(currentOrder.getOrderId())
-//                            .append(" (")
-//                            .append(currentOrder.getItems().size())
-//                            .append(" 个商品)\n");
                 } else {
-                    sb.append("空闲中\n");
+                    sb.append("Idle\n");
                 }
             }
 
             serversTextArea.setText(sb.toString());
         });
     }
+
 }
